@@ -8,6 +8,6 @@ import { User } from './user.entity';
 export class UserService {
 	constructor(
 		@InjectRepository(User)
-		userRepository: Repository<User>
+		private readonly userRepository: Repository<User>
 	) { }
 }

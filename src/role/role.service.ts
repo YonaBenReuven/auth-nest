@@ -8,6 +8,6 @@ import { Role } from './role.entity';
 export class RoleService {
 	constructor(
 		@InjectRepository(Role)
-		roleRepository: Repository<Role>
+		private readonly roleRepository: Repository<Role>
 	) { }
 }

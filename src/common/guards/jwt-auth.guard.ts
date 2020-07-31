@@ -3,6 +3,7 @@ import { ExecutionContext, Injectable } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
 import { UserService } from 'src/user/user.service';
+import { User } from 'src/user/user.entity';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
@@ -22,8 +23,8 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 		if (!roles) return true;
 		
 		const request = context.switchToHttp().getRequest();
-		const user = request.user;
+		const user = request.user as User;
 		
-		return this.userService.matchRoles(user.roles, roles);
+		return this.userService.matchRoles(user.roles.map(role => role.name), roles);
 	}
 }

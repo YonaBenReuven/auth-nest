@@ -22,5 +22,5 @@ export class User {
 	updated: Date;
 
 	@OneToMany(type => UserRole, userRole => userRole.user)
-	userRole: UserRole;
+	userRoles: UserRole[];
 }

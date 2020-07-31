@@ -3,10 +3,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 
 import { jwtConstants } from 'src/common/constants';
+import { RoleModule } from 'src/role/role.module';
+import { LocalStrategy } from 'src/common/strategies/local.strategy';
+import { JwtStrategy } from 'src/common/strategies/jwt.strategy';
 
 import { UserService } from './user.service';
 import { User } from './user.entity';
-import { RoleModule } from 'src/role/role.module';
 
 @Module({
 	imports: [
@@ -17,6 +19,7 @@ import { RoleModule } from 'src/role/role.module';
 			signOptions: { expiresIn: '100min' },
 		})
 	],
-	providers: [UserService]
+	providers: [UserService, LocalStrategy, JwtStrategy],
+	exports: [UserService]
 })
 export class UserModule { }

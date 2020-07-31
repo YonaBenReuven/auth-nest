@@ -1,6 +1,6 @@
-import { Entity, TableInheritance, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToMany, JoinTable, BeforeInsert } from 'typeorm';
+import { Entity, TableInheritance, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
 
-import { Role } from 'src/role/role.entity';
+import { UserRole } from 'src/user-role/user-role.entity';
 
 @Entity()
 @TableInheritance({ column: { type: "varchar", name: "type" } })
@@ -21,7 +21,6 @@ export class User {
 	@UpdateDateColumn()
 	updated: Date;
 
-	@ManyToMany(type => Role)
-	@JoinTable()
-	roles: Role[];
+	@OneToMany(type => UserRole, userRole => userRole.user)
+	userRole: UserRole;
 }

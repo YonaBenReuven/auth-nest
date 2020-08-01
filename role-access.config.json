@@ -1,0 +1,11 @@
+{
+    "ADMIN": {
+        "components": ["AdminMain"],
+        "defaultHomePage": "AdminMain"
+    },
+
+    "TEACHER": {
+        "components": ["TeacherMain"],
+        "defaultHomePage": "TeacherMain"
+    }
+}

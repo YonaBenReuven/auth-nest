@@ -59,8 +59,8 @@ export class UserService {
 
 		const { a, b } = user.roles
 			.map(role => roleAccessConfig[role.name])
-			.reduce(({ a }, { component, defaultHomePage }) => {
-				return { a: [...a, ...component], b: defaultHomePage };
+			.reduce(({ a }, { components, defaultHomePage }) => {
+				return { a: [...a, ...components], b: defaultHomePage };
 			}, { a: [], b: '' } as { a: string[]; b: string; });
 
 		const klo = base64.encode(JSON.stringify({ a, b }));

@@ -7,6 +7,7 @@ import { RequestUser } from './common/decorators/request-user.decorator';
 import { RequestUserType } from './common/interfaces/request-user-type.interface';
 import { UseJwtAuth } from './common/decorators/use-jwt-auth.decorator';
 import { Admin } from './admin/admin.entity';
+import { User } from './user/user.entity';
 
 @Controller()
 export class AppController {
@@ -15,13 +16,13 @@ export class AppController {
 		private readonly userService: UserService
 	) { }
 
-	@UseLocalAuth()
+	@UseLocalAuth({roles: []})
 	@Post('login')
 	login(@RequestUser() user: RequestUserType) {
 		return this.userService.login(user);
 	}
 
-	@UseJwtAuth()
+	@UseJwtAuth(Admin, User)
 	@Get('getStuff')
 	getStuff(@RequestUser('id') id: string) {
 		console.log(id);

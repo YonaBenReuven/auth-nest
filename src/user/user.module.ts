@@ -2,11 +2,10 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 
-import { jwtConstants } from 'src/common/constants';
+import { jwtConstants  } from 'src/common/constants';
+import { LocalStrategy  } from 'src/common/strategies/local.strategy';
+import { JwtStrategy  } from 'src/common/strategies/jwt.strategy';
 import { RoleModule } from 'src/role/role.module';
-import { LocalStrategy } from 'src/common/strategies/local.strategy';
-import { JwtStrategy } from 'src/common/strategies/jwt.strategy';
-
 import { UserService } from './user.service';
 import { User } from './user.entity';
 

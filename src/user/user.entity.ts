@@ -1,18 +1,20 @@
-import { Entity, TableInheritance, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToMany, JoinTable } from 'typeorm';
+import { Entity, TableInheritance, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToMany, JoinTable, BeforeInsert, BeforeUpdate } from 'typeorm';
+import * as bcrypt from 'bcrypt';
 
 import { Role } from 'src/role/role.entity';
+import { SALT } from 'src/common/constants';
 
 @Entity()
 @TableInheritance({ column: { type: "varchar", name: "type" } })
 export class User {
 
 	@PrimaryGeneratedColumn('uuid')
-	id: number;
+	id: string;
 
 	@Column()
 	username: string;
 
-	@Column()
+	@Column({ select: false })
 	password: string;
 
 	@CreateDateColumn()
@@ -24,4 +26,9 @@ export class User {
 	@ManyToMany(type => Role)
 	@JoinTable({ name: 'user_role' })
 	roles: Role[];
+
+	@BeforeInsert()
+	async hashPassword() {
+		this.password = await bcrypt.hash(this.password, SALT);
+	}
 }

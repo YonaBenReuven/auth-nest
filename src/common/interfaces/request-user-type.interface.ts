@@ -3,5 +3,7 @@ export interface RequestUserType {
 
 	username: string;
 
+	type: string;
+
 	roles: string[];
 }

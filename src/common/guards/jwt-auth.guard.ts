@@ -1,31 +1,21 @@
-import { Reflector } from '@nestjs/core';
-import { ExecutionContext, Injectable } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import { Injectable } from '@nestjs/common';
 
+import { CreateAuthGuard } from '../functions/create-auth-guard.function';
 import { UserService } from 'src/user/user.service';
-import { RequestUserType } from '../interfaces/request-user-type.interface';
+import { Reflector } from '@nestjs/core';
 
 @Injectable()
-export class JwtAuthGuard extends AuthGuard('jwt') {
+export class JwtAuthGuard extends CreateAuthGuard('jwt') {
+	public readonly userService: UserService;
+	public readonly reflector: Reflector;
+
 	constructor(
-		private readonly userService: UserService,
-		private reflector: Reflector
+		userService: UserService,
+		reflector: Reflector
 	) {
-		super();
-	}
+		super(userService, reflector);
 
-	async canActivate(context: ExecutionContext) {
-		const isAuthenticated = await super.canActivate(context);
-
-		if (!isAuthenticated) return false;
-
-		const roles = this.reflector.get<string[]>('roles', context.getHandler());
-
-		if (!roles || roles.length === 0) return true;
-
-		const request = context.switchToHttp().getRequest();
-		const user = request.user as RequestUserType;
-
-		return this.userService.matchRoles(user.roles, roles);
+		this.userService = userService;
+		this.reflector = reflector;
 	}
 }

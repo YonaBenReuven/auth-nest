@@ -48,6 +48,10 @@ export class UserService {
 		return this.matchRoles(userRoles, roles);
 	}
 
+	matchEntities<T extends Array<typeof User>>(type: string, entities: T) {
+		return entities.map(entity => entity.name).includes(type);
+	}
+
 	getKlos(roles: string[]) {
 		const { a, b } = roles
 			.map(role => this.roleAccessConfig[role])
@@ -72,10 +76,11 @@ export class UserService {
 		return klo;
 	}
 
-	async validateUser(username: string, pass: string): Promise<any> {
+	async validateUser(username: string, pass: string) {
 		const user = await this.userRepository
 			.createQueryBuilder('user')
 			.addSelect('user.password')
+			.addSelect('user.type')
 			.leftJoinAndSelect('user.roles', 'role')
 			.where({ username })
 			.getOne();
@@ -86,6 +91,7 @@ export class UserService {
 		const requestUser: RequestUserType = {
 			id: user.id,
 			username: user.username,
+			type: user.type,
 			roles: user.roles.map(role => role.name)
 		}
 

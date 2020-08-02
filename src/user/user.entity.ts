@@ -23,6 +23,9 @@ export class User {
 	@UpdateDateColumn()
 	updated: Date;
 
+	@Column({ select: false })
+	type: string;
+
 	@ManyToMany(type => Role)
 	@JoinTable({ name: 'user_role' })
 	roles: Role[];

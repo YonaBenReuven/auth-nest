@@ -1,15 +1,15 @@
-import { Module } from '@nestjs/common';
+import { Module, DynamicModule } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 
-import { jwtConstants  } from 'src/common/constants';
-import { LocalStrategy  } from 'src/common/strategies/local.strategy';
-import { JwtStrategy  } from 'src/common/strategies/jwt.strategy';
+import { jwtConstants } from 'src/common/constants';
+import { LocalStrategy } from 'src/common/strategies/local.strategy';
+import { JwtStrategy } from 'src/common/strategies/jwt.strategy';
 import { RoleModule } from 'src/role/role.module';
 import { UserService } from './user.service';
 import { User } from './user.entity';
 
-@Module({
+const module = (options = {}) => ({
 	imports: [
 		RoleModule,
 		TypeOrmModule.forFeature([User]),
@@ -18,7 +18,19 @@ import { User } from './user.entity';
 			signOptions: { expiresIn: '100min' },
 		})
 	],
-	providers: [UserService, LocalStrategy, JwtStrategy],
+	providers: [
+		{
+			provide: 'CONFIG_OPTIONS',
+			useValue: options,
+		},
+		UserService, LocalStrategy, JwtStrategy],
 	exports: [UserService]
 })
-export class UserModule { }
+
+@Module(module())
+
+export class UserModule {
+	static register(options: any): DynamicModule {
+		return { module: UserModule, ...module(options) };
+	}
+}

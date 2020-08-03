@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { Repository, DeepPartial } from 'typeorm';
@@ -10,6 +10,7 @@ import { User } from './user.entity';
 import { Role } from 'src/role/role.entity';
 import { RequestUserType } from 'src/common/interfaces/request-user-type.interface';
 import { RoleAccessConfig } from 'src/common/interfaces/role-access-config.interface';
+import { SALT } from 'src/common/constants';
 
 @Injectable()
 export class UserService {
@@ -17,9 +18,11 @@ export class UserService {
 	roleAccessConfig: RoleAccessConfig;
 
 	constructor(
+		@Inject('CONFIG_OPTIONS') private options,
 		@InjectRepository(User)
 		private readonly userRepository: Repository<User>,
 		private readonly jwtService: JwtService,
+		
 	) {
 		this.roleAccessConfig = require('../../role-access.config.json');
 	}
@@ -108,5 +111,26 @@ export class UserService {
 			klo: this.getKlos(user.roles),
 			access_token: this.jwtService.sign(user)
 		};
+	}
+
+	// With a givan userId, if oldPassword is matching, change to newPassword
+	async changePassword(userId: string | number, oldPassword: string, newPassword: string) {
+		const user = await this.userRepository
+			.createQueryBuilder('user')
+			.addSelect('user.password')
+			.where({ id: userId })
+			.getOne();
+
+		if (!user) return `Could not find user with id ${userId}`;
+		if (!bcrypt.compareSync(oldPassword, user.password)) return 'Passwords does not match.';
+		return await this.setPassword(userId, newPassword); 
+	}
+
+	// With a givan userId, change directly to newPassword (usefull for admins, for example)
+	async setPassword(userId: string | number, newPassword: string) {
+		let password = await bcrypt.hash(newPassword, SALT); 
+		let updated = await this.userRepository.update(userId, {password})
+		console.log("updated", updated)
+		return updated;
 	}
 }

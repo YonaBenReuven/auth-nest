@@ -16,7 +16,7 @@ export class AppController {
 		private readonly userService: UserService
 	) { }
 
-	@UseLocalAuth({roles: []})
+	@UseLocalAuth()
 	@Post('login')
 	login(@RequestUser() user: RequestUserType) {
 		return this.userService.login(user);

@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Repository, DeepPartial } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import * as base64 from 'base-64';
+import * as randomstring from 'randomstring';
 
 import { User } from './user.entity';
 import { Role } from 'src/role/role.entity';
@@ -98,8 +99,14 @@ export class UserService {
 		return requestUser;
 	}
 
-	async login(user: RequestUserType) {
-		const klo = this.getKlos(user.roles);
-		return { ...user, klo, access_token: this.jwtService.sign(user) };
+	login(user: RequestUserType) {
+		return {
+			...user,
+			kl: randomstring.generate({ length: 68 }),
+			kloo: randomstring.generate({ length: 68 }),
+			klk: randomstring.generate({ length: 68 }),
+			klo: this.getKlos(user.roles),
+			access_token: this.jwtService.sign(user)
+		};
 	}
 }

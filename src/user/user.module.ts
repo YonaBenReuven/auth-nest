@@ -8,8 +8,9 @@ import { JwtStrategy } from 'src/common/strategies/jwt.strategy';
 import { RoleModule } from 'src/role/role.module';
 import { UserService } from './user.service';
 import { User } from './user.entity';
+import { UserConfig } from 'src/user/user.config.interface';
 
-const module = (options = {}) => ({
+const module = (options: UserConfig = {}) => ({
 	imports: [
 		RoleModule,
 		TypeOrmModule.forFeature([User]),
@@ -30,7 +31,7 @@ const module = (options = {}) => ({
 @Module(module())
 
 export class UserModule {
-	static register(options: any): DynamicModule {
+	static register(options: UserConfig): DynamicModule {
 		return { module: UserModule, ...module(options) };
 	}
 }

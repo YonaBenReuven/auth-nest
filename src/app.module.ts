@@ -6,9 +6,12 @@ import { AppService } from './app.service';
 import { UserModule } from './user/user.module';
 import { RoleModule } from './role/role.module';
 import { AdminModule } from './admin/admin.module';
+import { ConfigModule } from '@nestjs/config';
+import configuration from './config/configuration';
 
 @Module({
-	imports: [TypeOrmModule.forRoot(), UserModule, RoleModule, AdminModule],
+	imports: [TypeOrmModule.forRoot(), ConfigModule.forRoot({ load: [configuration], isGlobal: true }),
+		UserModule, RoleModule, AdminModule],
 	controllers: [AppController],
 	providers: [AppService],
 })

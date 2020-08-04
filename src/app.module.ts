@@ -8,10 +8,14 @@ import { RoleModule } from './role/role.module';
 import { AdminModule } from './admin/admin.module';
 import { ConfigModule } from '@nestjs/config';
 import configuration from './config/configuration';
+import { mailer } from 'send-mail.js'
+import UserConfigOptions from './user/userConfigOptions';
+
+let userModuleConfig = new UserConfigOptions({ pathToLogo: "hilmaLogo.png", fromName: "Reuttt", mailer: mailer, emailAddress: mailer.options.auth.user });
 
 @Module({
 	imports: [TypeOrmModule.forRoot(), ConfigModule.forRoot({ load: [configuration], isGlobal: true }),
-		UserModule, RoleModule, AdminModule],
+	UserModule.register(userModuleConfig), RoleModule, AdminModule],
 	controllers: [AppController],
 	providers: [AppService],
 })

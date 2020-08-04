@@ -1,5 +1,6 @@
 {
     "auth": {
         "loginTTL": 18000
-    }
+    },
+    "app_name_he": "אמיגו"
 }

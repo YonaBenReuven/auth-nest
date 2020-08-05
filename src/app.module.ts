@@ -9,13 +9,18 @@ import { AdminModule } from './admin/admin.module';
 import { ConfigModule } from '@nestjs/config';
 import configuration from './config/configuration';
 import { mailer } from 'send-mail.js'
+import { EmailUserModule } from './email-user/email-user.module';
 import UserConfigOptions from './user/userConfigOptions';
 
 let userModuleConfig = new UserConfigOptions({ pathToLogo: "hilmaLogo.png", fromName: "Reuttt", mailer: mailer, emailAddress: mailer.options.auth.user });
 
 @Module({
 	imports: [TypeOrmModule.forRoot(), ConfigModule.forRoot({ load: [configuration], isGlobal: true }),
-	UserModule.register(userModuleConfig), RoleModule, AdminModule],
+	UserModule.register(userModuleConfig),
+		RoleModule,
+		AdminModule,
+	EmailUserModule.register({ ...userModuleConfig, verifyPath: "/email-user/verify", emailVerification: true })
+	],
 	controllers: [AppController],
 	providers: [AppService],
 })

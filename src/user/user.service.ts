@@ -21,10 +21,10 @@ export class UserService {
 	roleAccessConfig: RoleAccessConfig;
 
 	constructor(
-		@Inject('CONFIG_OPTIONS') private config_options: UserConfigOptions,
+		@Inject('CONFIG_OPTIONS') protected config_options: UserConfigOptions,
 		@InjectRepository(User)
-		private readonly userRepository: Repository<User>,
-		private readonly jwtService: JwtService,
+		protected readonly userRepository: Repository<User>,
+		protected readonly jwtService: JwtService,
 		protected readonly configService: ConfigService
 	) {
 		this.roleAccessConfig = require('../../role-access.config.json');
@@ -115,21 +115,22 @@ export class UserService {
 	}
 
 	async verifyEmailByToken(token: string): Promise<boolean> {
-		if (this.userRepository.metadata.propertiesMap.emailVerified)
-			try {
-				const verificationSuccess = await this.userRepository.manager.query(
-					'UPDATE user SET emailVerified=1,verificationToken=null WHERE verificationToken=?', [token]);
+		if (this.config_options.emailVerification)
+			if (this.userRepository.metadata.propertiesMap.emailVerified)
+				try {
+					const verificationSuccess = await this.userRepository.manager.query(
+						'UPDATE user SET emailVerified=1,verificationToken=null WHERE verificationToken=?', [token]);
 
-				return verificationSuccess.changedRows
+					return verificationSuccess.changedRows
+				}
+				catch (err) {
+					console.error("Error while verify email: %s", err);
+					return false;
+				}
+			else {
+				console.error("Cannot verify emails when `verificationToken` column dosent exist.")
+				process.exit(1)
 			}
-			catch (err) {
-				console.error("Error while verify email: %s", err);
-				return false;
-			}
-		else {
-			console.error("Cannot verify emails when `verificationToken` column dosent exist.")
-			process.exit(1)
-		}
 	}
 
 	async sendEmail(to: string, subject: string = null, text: string, html: string, attchments: Array<MailAttachments>): Promise<any> {
@@ -160,7 +161,7 @@ export class UserService {
 		let html = `<div style={{ direction: 'rtl' }}>
         <h1 >ברוכים הבאים ל${sitename}!</h1>
         <p>נשאר רק עוד צעד קטן כדי לסיים את ההרשמה שלכם!</p>
-        <p>לחצו על הקישור <a href="https://${process.env.REACT_APP_DOMAIN}/api${verifyPath}?token=${token}">כאן</a> כדי לאמת את כתובת המייל💚</p>
+        <p>לחצו על הקישור <a href="${process.env.REACT_APP_DOMAIN}/api${verifyPath}?token=${token}">כאן</a> כדי לאמת את כתובת המייל💚</p>
         ${this.config_options.pathToLogo ? `<div style="width:100%">
 			<img src="cid:logo"></img>
         </div>`: ""}

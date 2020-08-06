@@ -19,4 +19,17 @@ export class EmailUserService extends UserService {
 
         // this.sendVerificationEmail("reut.schremer@carmel6000.amitnet.org", "lalala");
     }
+
+
+
+    googleLogin(req) {
+        if (!req.user) {
+            return 'No user from google'
+        }
+
+        return {
+            message: 'User information from google',
+            user: req.user
+        }
+    }
 }

@@ -8,6 +8,7 @@ import UserConfigOptions from 'src/user/userConfigOptions';
 import { JwtModule } from '@nestjs/jwt';
 import { jwtConstants } from 'src/common/constants';
 import { RoleModule } from 'src/role/role.module';
+import { GoogleStrategy } from 'src/common/strategies/oauth2.strategy';
 
 const userModule = (options: UserConfigOptions = new UserConfigOptions()) => ({
     imports: [
@@ -23,7 +24,8 @@ const userModule = (options: UserConfigOptions = new UserConfigOptions()) => ({
             provide: 'CONFIG_OPTIONS',
             useValue: options,
         },
-        EmailUserService
+        EmailUserService,
+        GoogleStrategy
     ],
     exports: [EmailUserService],
     controllers: [EmailUserController]

@@ -14,6 +14,8 @@ import { SALT } from 'src/common/constants';
 import { ConfigService } from '@nestjs/config';
 import UserConfigOptions from './userConfigOptions';
 import * as crypto from 'crypto';
+import passport = require('passport');
+import { OAuth2Strategy } from 'passport-oauth2';
 
 @Injectable()
 export class UserService {
@@ -28,6 +30,23 @@ export class UserService {
 		protected readonly configService: ConfigService
 	) {
 		this.roleAccessConfig = require('../../role-access.config.json');
+
+		if (this.config_options.OAuth2) {
+			passport.use(new OAuth2Strategy({
+				authorizationURL: 'https://www.example.com/oauth2/authorize',
+				tokenURL: 'https://www.example.com/oauth2/token',
+				clientID: process.env.OAUTH_CLIENT_ID,
+				clientSecret: process.env.OAUTH_CLIENT_SECRET,
+				callbackURL: "http://localhost:3000/auth/example/callback"
+			},
+				function (accessToken, refreshToken, profile, cb) {
+					console.log(accessToken, profile)
+					// User.findOrCreate({ exampleId: profile.id }, function (err, user) {
+					// 	return cb(err, user);
+					// });
+				}
+			));
+		}
 	}
 
 	async createUser(user: DeepPartial<User>) {
@@ -38,6 +57,10 @@ export class UserService {
 			return userAndToken;
 		}
 		else res;
+	}
+
+	async oAuthLogin(){
+		
 	}
 
 	async getRolesById(id: string) {

@@ -7,7 +7,7 @@ import { Admin } from './admin.entity';
 import { UserModule } from 'src/user/user.module';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([Admin]), UserModule],
+	imports: [TypeOrmModule.forFeature([Admin]), UserModule.register({maxAge: 44444})],
 	providers: [AdminService],
 	controllers: [AdminController]
 })

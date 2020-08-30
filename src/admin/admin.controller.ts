@@ -1,4 +1,5 @@
-import { Controller, Post } from '@nestjs/common';
+import { Controller, Post, Res } from '@nestjs/common';
+import { Response } from 'express';
 
 import { Admin } from './admin.entity';
 import { RequestUser } from 'src/common/decorators/request-user.decorator';
@@ -14,7 +15,8 @@ export class AdminController {
 
 	@UseLocalAuth(Admin)
 	@Post('login')
-	login(@RequestUser() user: RequestUserType) {
-		return this.userService.login(user);
+	login(@RequestUser() user: RequestUserType, @Res() res: Response) {
+		const body = this.userService.login(user, res);
+		res.send(body);
 	}
 }

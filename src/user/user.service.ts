@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
+import { Response } from 'express';
 import { Repository, DeepPartial } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import * as base64 from 'base-64';
@@ -99,14 +100,21 @@ export class UserService {
 		return requestUser;
 	}
 
-	login(user: RequestUserType) {
-		return {
-			...user,
+	login(user: RequestUserType, res: Response) {
+		const cookies = {
+			access_token: this.jwtService.sign(user),
+			klo: this.getKlos(user.roles),
 			kl: randomstring.generate({ length: 68 }),
 			kloo: randomstring.generate({ length: 68 }),
 			klk: randomstring.generate({ length: 68 }),
-			klo: this.getKlos(user.roles),
-			access_token: this.jwtService.sign(user)
 		};
+
+		for (const key in cookies) {
+			res.cookie(key, cookies[key]);
+		}
+
+		const body = { ...user, ...cookies };
+
+		return body;
 	}
 }

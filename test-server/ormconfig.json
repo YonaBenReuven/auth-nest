@@ -6,7 +6,8 @@
     "password": "z10mz10m",
     "database": "auth_nest",
     "entities": [
-        "dist/**/*.entity{.ts,.js}"
+        "dist/**/*.entity{.ts,.js}",
+        "node_modules/@hilma/auth-nest/dist/**/*.entity{.ts,.js}"
     ],
     "synchronize": true,
     "logging": true

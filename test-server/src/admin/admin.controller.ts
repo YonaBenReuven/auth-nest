@@ -1,11 +1,8 @@
 import { Controller, Post, Res } from '@nestjs/common';
 import { Response } from 'express';
+import { RequestUser, RequestUserType, UserService, UseLocalAuth } from '@hilma/auth-nest';
 
 import { Admin } from './admin.entity';
-import { RequestUser } from 'src/common/decorators/request-user.decorator';
-import { RequestUserType } from 'src/common/interfaces/request-user-type.interface';
-import { UserService } from 'src/user/user.service';
-import { UseLocalAuth } from 'src/common/decorators/use-local-auth.decorator';
 
 @Controller('admin')
 export class AdminController {

@@ -1,12 +1,8 @@
 import { Controller, Get, Param, Post, Res } from '@nestjs/common';
 import { Response } from 'express';
+import { UserService, UseLocalAuth, RequestUser, RequestUserType, UseJwtAuth } from '@hilma/auth-nest';
 
 import { AppService } from './app.service';
-import { UserService } from './user/user.service';
-import { UseLocalAuth } from './common/decorators/use-local-auth.decorator';
-import { RequestUser } from './common/decorators/request-user.decorator';
-import { RequestUserType } from './common/interfaces/request-user-type.interface';
-import { UseJwtAuth } from './common/decorators/use-jwt-auth.decorator';
 
 @Controller()
 export class AppController {

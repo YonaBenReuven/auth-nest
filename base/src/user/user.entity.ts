@@ -8,13 +8,19 @@ import { SALT } from '../common/constants';
 @TableInheritance({ column: { type: "varchar", name: "type" } })
 export class User {
 
+	constructor(basicUser: Partial<User> = {}) {
+		basicUser.username && (this.username = basicUser.username);
+		basicUser.password && (this.password = basicUser.password);
+		if (basicUser.roles && basicUser.roles.length) this.roles = basicUser.roles;
+	}
+
 	@PrimaryGeneratedColumn('uuid')
 	id!: string;
 
 	@Column()
 	username!: string;
 
-	@Column({ select: false })
+	@Column({ select: false, default: null })
 	password!: string;
 
 	@CreateDateColumn()
@@ -32,6 +38,7 @@ export class User {
 
 	@BeforeInsert()
 	async hashPassword() {
-		this.password = await bcrypt.hash(this.password, SALT);
+		if (this.password)
+			this.password = await bcrypt.hash(this.password, SALT);
 	}
 }

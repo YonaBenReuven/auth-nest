@@ -1,6 +1,4 @@
-import { Injectable, 
-	// Inject 
-} from '@nestjs/common';
+import { Injectable, Inject, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { Response } from 'express';
@@ -13,10 +11,14 @@ import { User } from './user.entity';
 import { Role } from '../role/role.entity';
 import { RequestUserType } from '../common/interfaces/request-user-type.interface';
 import { RoleAccessConfig } from '../common/interfaces/role-access-config.interface';
-import { SALT, 
-	// USER_MODULE_OPTIONS 
-} from '../common/constants';
-// import { UserConfig } from './user.config.interface';
+import { SALT } from '../common/constants';
+import { ConfigService } from '@nestjs/config';
+import { UserConfig } from './user.config.interface';
+import * as crypto from 'crypto';
+import { MailerInterface, MailAttachments } from '../mails/mailer.interface';
+import { render } from 'mustache';
+import { VerifyMailTemplate } from '../mails/verifyMail.template';
+const debug = require('debug')("model:User")
 
 @Injectable()
 export class UserService {
@@ -24,17 +26,26 @@ export class UserService {
 	roleAccessConfig: Record<string, RoleAccessConfig>;
 
 	constructor(
-		// @Inject(USER_MODULE_OPTIONS) private options: UserConfig,
+		@Inject('USER_MODULE_OPTIONS')
+		protected config_options: UserConfig,
 		@InjectRepository(User)
-		private readonly userRepository: Repository<User>,
-		private readonly jwtService: JwtService,
-
+		protected readonly userRepository: Repository<User>,
+		protected readonly jwtService: JwtService,
+		protected readonly configService: ConfigService,
+		@Optional() @Inject('MailService')
+		protected readonly mailer?: MailerInterface
 	) {
-		this.roleAccessConfig = require('../../../../../role-access.config.json');
+		this.roleAccessConfig = require.main.require('../role-access.config.json');
 	}
 
-	createUser(user: DeepPartial<User>) {
-		return this.userRepository.save(user);
+	async createUser(user: DeepPartial<User>) {
+		let res = await this.userRepository.save(user);
+		if (this.config_options.emailVerification) {
+			let userAndToken = await this.generateVerificationTokenAndSave(res);
+			this.sendVerificationEmail(userAndToken.username, userAndToken.verificationToken);
+			return userAndToken;
+		}
+		else res;
 	}
 	/**
 	 * Gets a user's roles by its id
@@ -120,16 +131,22 @@ export class UserService {
 	 * Otherwise, i.e. if the username doesn't exits or the password is incorrect, null is returned
 	 */
 	async validateUser(username: string, pass: string) {
-		const user = await this.userRepository
+		const user: any = await this.userRepository
 			.createQueryBuilder('user')
 			.addSelect('user.password')
 			.addSelect('user.type')
+			.addSelect(this.config_options.emailVerification ? 'user.emailVerified' : '')
 			.leftJoinAndSelect('user.roles', 'role')
 			.where({ username })
 			.getOne();
 
 		if (!user) return null;
+		if (!user.password) {
+			return null;
+		}
 		if (!bcrypt.compareSync(pass, user.password)) return null;
+		if (this.config_options.emailVerification && !user.emailVerified)//user didnt verified his email
+			return null;
 
 		const requestUser: RequestUserType = {
 			id: user.id,
@@ -140,6 +157,87 @@ export class UserService {
 
 		return requestUser;
 	}
+
+	async verifyEmailByToken(token: string): Promise<boolean> {
+		if (this.config_options.emailVerification)
+			if (this.userRepository.metadata.propertiesMap.emailVerified)
+				try {
+					const verificationSuccess = await this.userRepository.manager.query(
+						'UPDATE user SET emailVerified=1,verificationToken=null WHERE verificationToken=?', [token]);
+
+					return verificationSuccess.changedRows
+				}
+				catch (err) {
+					console.error("Error while verify email: %s", err);
+					return false;
+				}
+			else {
+				console.error("Cannot verify emails when `verificationToken` column dosent exist.")
+				process.exit(1)
+			}
+	}
+
+	async sendEmail(to: string | Array<string>, subject: string = null, text: string, html: string, attchments: Array<MailAttachments>): Promise<any> {
+		if (!this.mailer) throw "No mailer supplied "
+
+		if (!subject) {
+			if (this.configService.get('app_name')) {
+				subject = `Welcome to ${this.configService.get('app_name')}!`;
+			} else
+				subject = "Welcome!"
+		}
+
+		console.log('html:', html)
+
+		this.mailer.send({
+			from: `${this.configService.get("app_name") || this.configService.get("app_name_he")} <${process.env.SEND_EMAIL_ADDR}>`, // from: '"Fred Foo 👻" <foo@example.com>', // sender address
+			to: to, // list of receivers
+			subject, // Subject line
+			text, // plain text body
+			html, // html body
+			attachments: attchments//array of attachments, each object of
+		}).then(res => console.log(">Sent email to ", res.accepted)).
+			catch(err => console.error(">Error in send mail: %s", err))
+	}
+
+	async sendVerificationEmail(email: string, token: string) {
+		const verification_email_config = this.configService.get('auth.verification_email');
+		let sitename = this.configService.get('app_name_he') || "אתר תוצרת הילמה",
+			htmlConf = verification_email_config.html,
+			verifyPath = verification_email_config.verifyPath || "/verify",
+			imagePlace = verification_email_config.logoDiv,
+			logoPath = verification_email_config.logoPath,
+			subject = verification_email_config.subject || "ברוכים הבאים! צעד אחרון ואתם רשומים🤩",
+			text = verification_email_config.text;
+
+		if (!htmlConf)
+			htmlConf = VerifyMailTemplate;
+		let html = render(htmlConf, { sitename, verifyPath, token, placeForLogo: imagePlace });
+		text && (text = render(text, { sitename, verifyPath, token, placeForLogo: imagePlace }));
+
+		const attchments = logoPath && imagePlace ? [{ cid: "logo", path: logoPath }] : [];
+		this.sendEmail(email, subject, text, html, attchments);
+	}
+
+	generateVerificationToken() {
+		let buffer = crypto.randomBytes(50);
+		if (buffer) return buffer.toString('hex')
+		else throw new Error("Failed to generate token")
+	};
+
+	async generateVerificationTokenAndSave(user: DeepPartial<User>) {
+		try {
+			let token = this.generateVerificationToken();
+			const updateSuccess = await this.userRepository.manager.query(
+				'UPDATE user SET verificationToken=? WHERE id=?', [token, user.id]);
+
+			return { ...user, verificationToken: token }
+		} catch (err) {
+
+		}
+	}
+
+
 	/**
 	 * Creates a login response for a controller's endpoint
 	 * @param user A user request type created by validate user
@@ -184,4 +282,32 @@ export class UserService {
 		console.log("updated", updated)
 		return updated;
 	}
+
+
+	async forceLogin(user: any, field: string, res: Response, roles?: Role[]) {
+		if (!user[field]) {
+			debug("User tried to force login:", user);
+			return {}
+		}
+		let userInst = await this.userRepository.findOne(
+			{ where: { username: user[field] }, relations: ["roles"] });
+		if (userInst) {
+			debug('Logged using forced login:', userInst)//WE DONT CARE HOW DID YOU LOGGED IN
+
+			return this.login({ ...userInst, roles: userInst.roles.map(role => role.name) }, res);
+
+		}
+		else {
+			//Create new user ~WITH NO PASSWORD~
+			let newUser = { ...user, username: user[field], password: null, emailVerified: 1, roles: roles || [] }
+			this.userRepository.save(newUser);
+			debug("New user instance: ", newUser);
+			return this.login({ ...newUser, roles: newUser.roles.map(role => role.name) }, res);
+		}
+	}
+
+	async allUsers(): Promise<User[]> {
+		return this.userRepository.find();
+	}
 }
+

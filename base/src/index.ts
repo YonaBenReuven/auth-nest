@@ -22,3 +22,7 @@ export { UserConfig } from './user/user.config.interface';
 export { User } from './user/user.entity';
 export { UserModule } from './user/user.module';
 export { UserService } from './user/user.service';
+export { MailerInterface, MailAttachments } from './mails/mailer.interface';
+export { NodeMailerService } from './mails/MailService';
+export { NodeMailerModule } from './mails/MailModule';
+export { VerifyMailTemplate } from './mails/verifyMail.template';

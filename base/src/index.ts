@@ -1,3 +1,5 @@
+export { UseJwtInterceptor } from './common/decorators/use-jwt-interceptor.decorator';
+export { JwtAuthInterceptor } from './common/interceptors/jwt-auth.interceptor';
 export { Entities } from './common/decorators/entities.decorator';
 export { RequestUser } from './common/decorators/request-user.decorator';
 export { Roles } from './common/decorators/roles.decorator';

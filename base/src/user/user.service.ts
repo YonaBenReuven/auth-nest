@@ -103,7 +103,7 @@ export class UserService {
 				return { a: [...a, ...components], b: defaultHomePage };
 			}, { a: [], b: '' } as { a: string[]; b: string; });
 
-		const klo = base64.encode(JSON.stringify({ a, b }));
+		const klo = base64.encode(JSON.stringify({ a, b })).replace(/==|=/gm, '');
 
 		return klo;
 	}

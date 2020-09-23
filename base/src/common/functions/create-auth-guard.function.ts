@@ -1,5 +1,5 @@
 import { Reflector } from '@nestjs/core';
-import { ExecutionContext } from '@nestjs/common';
+import { BadRequestException, ExecutionContext, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
 import { UserService } from '../../user/user.service';
@@ -17,7 +17,11 @@ export const CreateAuthGuard = (type?: string | string[]) => class CreateAuthGua
 	async canActivate(context: ExecutionContext) {
 		const isAuthenticated = await super.canActivate(context);
 
-		if (!isAuthenticated) return false;
+		if (!isAuthenticated) {
+			if (type === 'local') throw new BadRequestException();
+			else if (type === 'jwt') throw new UnauthorizedException();
+			else return false;
+		}
 
 		const entities = this.reflector.get<Array<typeof User>>('entities', context.getHandler());
 		const roles = this.reflector.get<string[]>('roles', context.getHandler());
@@ -25,7 +29,15 @@ export const CreateAuthGuard = (type?: string | string[]) => class CreateAuthGua
 		const request = context.switchToHttp().getRequest();
 		const user = request.user as RequestUserType;
 
-		return ((entities && entities.length > 0) ? this.userService.matchEntities(user.type, entities) : true) &&
+		const canActivate = ((entities && entities.length > 0) ? this.userService.matchEntities(user.type, entities) : true) &&
 			((roles && roles.length > 0) ? this.userService.matchRoles(user.roles, roles) : true);
+
+		if (!canActivate) {
+			if (type === 'local') throw new ForbiddenException();
+			else if (type === 'jwt') throw new UnauthorizedException();
+			else return false;
+		}
+
+		return true;
 	}
 }

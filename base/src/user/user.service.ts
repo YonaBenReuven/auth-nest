@@ -10,9 +10,9 @@ import * as randomstring from 'randomstring';
 import { render } from 'mustache';
 import * as crypto from 'crypto';
 
-import { RoleAccessConfig } from '../common/interfaces/role-access-config.interface';
+import { AuthConfig } from '../common/interfaces/auth-config.interface';
 import { RequestUserType } from '../common/interfaces/request-user-type.interface';
-import { SALT } from '../common/constants';
+import { DEFAULT_MAX_AGE, SALT } from '../common/constants';
 import { MailerInterface, MailAttachments } from '../mails/mailer.interface';
 import { VerifyMailTemplate } from '../mails/verifyMail.template';
 import { Role } from '../role/role.entity';
@@ -95,7 +95,7 @@ export class UserService {
 	 */
 	getKlos(roles: string[]) {
 		const { a, b } = roles
-			.map(role => this.configService.get<RoleAccessConfig>(`roleAccessConfig.${role}`))
+			.map(role => this.configService.get<AuthConfig['roleAccessConfig'][keyof AuthConfig['roleAccessConfig']]>(`roleAccessConfig.${role}`))
 			.filter(roleAccessConfig => !!roleAccessConfig)
 			.reduce(({ a }, { components, defaultHomePage }) => {
 				return { a: [...a, ...components], b: defaultHomePage };
@@ -129,7 +129,7 @@ export class UserService {
 	 * Otherwise, i.e. if the username doesn't exits or the password is incorrect, null is returned
 	 */
 	async validateUser(username: string, pass: string) {
-		const user: any = await this.userRepository
+		const user = await this.userRepository
 			.createQueryBuilder('user')
 			.addSelect('user.password')
 			.addSelect('user.type')
@@ -143,7 +143,7 @@ export class UserService {
 			return null;
 		}
 		if (!bcrypt.compareSync(pass, user.password)) return null;
-		if (this.config_options.emailVerification && !user.emailVerified)//user didnt verified his email
+		if (this.config_options.emailVerification && !(user as User & { emailVerified: any }).emailVerified)//user didnt verified his email
 			return null;
 
 		const requestUser: RequestUserType = {
@@ -179,8 +179,8 @@ export class UserService {
 		if (!this.mailer) throw "No mailer supplied "
 
 		if (!subject) {
-			if (this.configService.get('app_name')) {
-				subject = `Welcome to ${this.configService.get('app_name')}!`;
+			if (this.configService.get<AuthConfig['app_name']>('app_name')) {
+				subject = `Welcome to ${this.configService.get<AuthConfig['app_name']>('app_name')}!`;
 			} else
 				subject = "Welcome!"
 		}
@@ -188,7 +188,7 @@ export class UserService {
 		console.log('html:', html)
 
 		this.mailer.send({
-			from: `${this.configService.get("app_name") || this.configService.get("app_name_he")} <${process.env.SEND_EMAIL_ADDR}>`, // from: '"Fred Foo 👻" <foo@example.com>', // sender address
+			from: `${this.configService.get<AuthConfig['app_name']>("app_name") || this.configService.get<AuthConfig['app_name_he']>("app_name_he")} <${process.env.SEND_EMAIL_ADDR}>`, // from: '"Fred Foo 👻" <foo@example.com>', // sender address
 			to: to, // list of receivers
 			subject, // Subject line
 			text, // plain text body
@@ -199,8 +199,8 @@ export class UserService {
 	}
 
 	async sendVerificationEmail(email: string, token: string) {
-		const verification_email_config = this.configService.get('auth.verification_email');
-		let sitename = this.configService.get('app_name_he') || "אתר תוצרת הילמה",
+		const verification_email_config = this.configService.get<AuthConfig['auth']['verification_email']>('auth.verification_email');
+		let sitename = this.configService.get<AuthConfig['app_name_he']>('app_name_he') || "אתר תוצרת הילמה",
 			htmlConf = verification_email_config.html,
 			verifyPath = verification_email_config.verifyPath || "/verify",
 			imagePlace = verification_email_config.logoDiv,
@@ -242,9 +242,11 @@ export class UserService {
 	 * @param res The response object from the controller's endpoint
 	 * @returns A login response consisting of the user request and the cookies that are attached to the response object
 	 */
-	login(user: RequestUserType, res: Response) {
+	login(user: RequestUserType, res: Response, ttl?: number) {
+		ttl = ttl ?? this.configService.get<AuthConfig['auth']['ttl'][keyof AuthConfig['auth']['ttl']]>(`auth.ttl.${user.type}`) ?? DEFAULT_MAX_AGE;
+
 		const cookies = {
-			access_token: this.jwtService.sign(user),
+			access_token: this.jwtService.sign(user, { expiresIn: ttl }),
 			klo: this.getKlos(user.roles),
 			kl: randomstring.generate({ length: 68 }),
 			kloo: randomstring.generate({ length: 68 }),
@@ -252,7 +254,7 @@ export class UserService {
 		};
 
 		for (const key in cookies) {
-			res.cookie(key, cookies[key as keyof typeof cookies]);
+			res.cookie(key, cookies[key as keyof typeof cookies], { maxAge: ttl });
 		}
 
 		const body = { ...user, ...cookies };

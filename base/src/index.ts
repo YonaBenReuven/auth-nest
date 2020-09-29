@@ -12,8 +12,8 @@ export { extractTokenFromCookie } from './common/functions/extract-token-from-co
 export { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 export { LocalAuthGuard } from './common/guards/local-auth.guard';
 export { RequestUserType } from './common/interfaces/request-user-type.interface';
-export { RoleAccessConfig } from './common/interfaces/role-access-config.interface';
 export { UseAuthGuard } from './common/interfaces/use-auth-guard.interface';
+export { AuthConfig } from './common/interfaces/auth-config.interface';
 export { JwtStrategy } from './common/strategies/jwt.strategy';
 export { LocalStrategy } from './common/strategies/local.strategy';
 export { SALT, USER_MODULE_OPTIONS, jwtConstants } from './common/constants';

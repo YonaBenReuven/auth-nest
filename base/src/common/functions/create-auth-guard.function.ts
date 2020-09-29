@@ -1,5 +1,5 @@
 import { Reflector } from '@nestjs/core';
-import { BadRequestException, ExecutionContext, ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
 import { UserService } from '../../user/user.service';
@@ -18,8 +18,7 @@ export const CreateAuthGuard = (type?: string | string[]) => class CreateAuthGua
 		const isAuthenticated = await super.canActivate(context);
 
 		if (!isAuthenticated) {
-			if (type === 'local') throw new BadRequestException();
-			else if (type === 'jwt') throw new UnauthorizedException();
+			if (type === 'local' || type === 'jwt') throw new UnauthorizedException();
 			else return false;
 		}
 
@@ -33,8 +32,7 @@ export const CreateAuthGuard = (type?: string | string[]) => class CreateAuthGua
 			((roles && roles.length > 0) ? this.userService.matchRoles(user.roles, roles) : true);
 
 		if (!canActivate) {
-			if (type === 'local') throw new ForbiddenException();
-			else if (type === 'jwt') throw new UnauthorizedException();
+			if (type === 'local' || type === 'jwt') throw new UnauthorizedException();
 			else return false;
 		}
 

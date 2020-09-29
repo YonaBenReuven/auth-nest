@@ -1,30 +1,29 @@
 import { Injectable, Inject, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
 import { Repository, DeepPartial } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import * as base64 from 'base-64';
 import * as randomstring from 'randomstring';
+import { render } from 'mustache';
+import * as crypto from 'crypto';
+
+import { RoleAccessConfig } from '../common/interfaces/role-access-config.interface';
+import { RequestUserType } from '../common/interfaces/request-user-type.interface';
+import { SALT } from '../common/constants';
+import { MailerInterface, MailAttachments } from '../mails/mailer.interface';
+import { VerifyMailTemplate } from '../mails/verifyMail.template';
+import { Role } from '../role/role.entity';
 
 import { User } from './user.entity';
-import { Role } from '../role/role.entity';
-import { RequestUserType } from '../common/interfaces/request-user-type.interface';
-import { RoleAccessConfig } from '../common/interfaces/role-access-config.interface';
-import { SALT } from '../common/constants';
-import { ConfigService } from '@nestjs/config';
 import { UserConfig } from './user.config.interface';
-import * as crypto from 'crypto';
-import { MailerInterface, MailAttachments } from '../mails/mailer.interface';
-import { render } from 'mustache';
-import { VerifyMailTemplate } from '../mails/verifyMail.template';
-const debug = require('debug')("model:User")
+
+const debug = require('debug')('model:User');
 
 @Injectable()
 export class UserService {
-
-	roleAccessConfig: Record<string, RoleAccessConfig>;
-
 	constructor(
 		@Inject('USER_MODULE_OPTIONS')
 		protected config_options: UserConfig,
@@ -34,9 +33,7 @@ export class UserService {
 		protected readonly configService: ConfigService,
 		@Optional() @Inject('MailService')
 		protected readonly mailer?: MailerInterface
-	) {
-		this.roleAccessConfig = require.main.require('../role-access.config.json');
-	}
+	) { }
 
 	async createUser(user: DeepPartial<User>) {
 		let res = await this.userRepository.save(user);
@@ -98,7 +95,8 @@ export class UserService {
 	 */
 	getKlos(roles: string[]) {
 		const { a, b } = roles
-			.map(role => this.roleAccessConfig[role])
+			.map(role => this.configService.get<RoleAccessConfig>(`roleAccessConfig.${role}`))
+			.filter(roleAccessConfig => !!roleAccessConfig)
 			.reduce(({ a }, { components, defaultHomePage }) => {
 				return { a: [...a, ...components], b: defaultHomePage };
 			}, { a: [], b: '' } as { a: string[]; b: string; });

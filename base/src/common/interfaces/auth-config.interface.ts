@@ -15,6 +15,8 @@ export interface AuthConfig {
 		};
 
 		secretOrKey?: string;
+
+		accessToken_cookie?: string
 	};
 
 	app_name?: string;

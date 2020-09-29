@@ -19,7 +19,7 @@ export class JwtAuthInterceptor implements NestInterceptor {
 		const ctx = context.switchToHttp();
 		const req = ctx.getRequest<Request>();
 
-		const token = extractTokenFromCookie('access_token')(req);
+		const token = extractTokenFromCookie(this.configService.get<AuthConfig['auth']['accessToken_cookie']>('auth.accessToken_cookie') ?? 'access_token')(req);
 
 		try {
 			const user = this.jwtService.verify(token, { secret: this.configService.get<AuthConfig['auth']['secretOrKey']>('auth.secretOrKey') ?? jwtConstants.secret });

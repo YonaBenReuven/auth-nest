@@ -29,7 +29,7 @@ export const CreateAuthGuard = (type?: string | string[]) => class CreateAuthGua
 		const request = context.switchToHttp().getRequest();
 		const user = request.user as RequestUserType;
 
-		const canActivate = ((entities && entities.length > 0) ? this.userService.matchEntities(user.type, entities) : true) &&
+		const canActivate = ((entities && entities.length > 0) ? this.userService.matchEntities(user.type, entities) : true) ||
 			((roles && roles.length > 0) ? this.userService.matchRoles(user.roles, roles) : true);
 
 		if (!canActivate) {

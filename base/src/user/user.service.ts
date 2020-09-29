@@ -12,7 +12,7 @@ import * as crypto from 'crypto';
 
 import { AuthConfig } from '../common/interfaces/auth-config.interface';
 import { RequestUserType } from '../common/interfaces/request-user-type.interface';
-import { DEFAULT_MAX_AGE, SALT } from '../common/constants';
+import { DEFAULT_MAX_AGE, jwtConstants, SALT } from '../common/constants';
 import { MailerInterface, MailAttachments } from '../mails/mailer.interface';
 import { VerifyMailTemplate } from '../mails/verifyMail.template';
 import { Role } from '../role/role.entity';
@@ -246,7 +246,7 @@ export class UserService {
 		ttl = ttl ?? this.configService.get<AuthConfig['auth']['ttl'][keyof AuthConfig['auth']['ttl']]>(`auth.ttl.${user.type}`) ?? DEFAULT_MAX_AGE;
 
 		const cookies = {
-			access_token: this.jwtService.sign(user, { expiresIn: ttl }),
+			access_token: this.jwtService.sign(user, { expiresIn: ttl, secret: this.configService.get<AuthConfig['auth']['secretOrKey']>('auth.secretOrKey') ?? jwtConstants.secret }),
 			klo: this.getKlos(user.roles),
 			kl: randomstring.generate({ length: 68 }),
 			kloo: randomstring.generate({ length: 68 }),

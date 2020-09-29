@@ -13,6 +13,8 @@ export interface AuthConfig {
 			logoPath?: string;
 			subject?: string;
 		};
+
+		secretOrKey?: string;
 	};
 
 	app_name?: string;

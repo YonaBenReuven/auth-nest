@@ -13,7 +13,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 		private readonly configService: ConfigService,
 	) {
 		super({
-			jwtFromRequest: extractTokenFromCookie('access_token'),
+			jwtFromRequest: extractTokenFromCookie(configService.get<AuthConfig['auth']['accessToken_cookie']>('auth.accessToken_cookie') ?? 'access_token'),
 			ignoreExpiration: false,
 			secretOrKey: configService.get<AuthConfig['auth']['secretOrKey']>('auth.secretOrKey') ?? jwtConstants.secret,
 		});

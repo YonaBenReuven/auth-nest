@@ -10,7 +10,7 @@ import * as randomstring from 'randomstring';
 import { render } from 'mustache';
 import * as crypto from 'crypto';
 
-import { AuthConfig } from '../common/interfaces/auth-config.interface';
+import { AuthConfig, AuthConfigAccessTokenCookie, AuthConfigAppName, AuthConfigAppNameHe, AuthConfigRoleAccess, AuthConfigSecretOrKey, AuthConfigTtl, AuthConfigVerificationEmail } from '../common/interfaces/auth-config.interface';
 import { RequestUserType } from '../common/interfaces/request-user-type.interface';
 import { DEFAULT_MAX_AGE, jwtConstants, SALT } from '../common/constants';
 import { MailerInterface, MailAttachments } from '../mails/mailer.interface';
@@ -95,7 +95,7 @@ export class UserService {
 	 */
 	getKlos(roles: string[]) {
 		const { a, b } = roles
-			.map(role => this.configService.get<AuthConfig['roleAccessConfig'][keyof AuthConfig['roleAccessConfig']]>(`roleAccessConfig.${role}`))
+			.map(role => this.configService.get<AuthConfigRoleAccess[keyof AuthConfigRoleAccess]>(`roleAccess.${role}`))
 			.filter(roleAccessConfig => !!roleAccessConfig)
 			.reduce(({ a }, { components, defaultHomePage }) => {
 				return { a: [...a, ...components], b: defaultHomePage };
@@ -179,8 +179,8 @@ export class UserService {
 		if (!this.mailer) throw "No mailer supplied "
 
 		if (!subject) {
-			if (this.configService.get<AuthConfig['app_name']>('app_name')) {
-				subject = `Welcome to ${this.configService.get<AuthConfig['app_name']>('app_name')}!`;
+			if (this.configService.get<AuthConfigAppName>('app_name')) {
+				subject = `Welcome to ${this.configService.get<AuthConfigAppName>('app_name')}!`;
 			} else
 				subject = "Welcome!"
 		}
@@ -188,7 +188,7 @@ export class UserService {
 		console.log('html:', html)
 
 		this.mailer.send({
-			from: `${this.configService.get<AuthConfig['app_name']>("app_name") || this.configService.get<AuthConfig['app_name_he']>("app_name_he")} <${process.env.SEND_EMAIL_ADDR}>`, // from: '"Fred Foo 👻" <foo@example.com>', // sender address
+			from: `${this.configService.get<AuthConfigAppName>("app_name") || this.configService.get<AuthConfigAppNameHe>("app_name_he")} <${process.env.SEND_EMAIL_ADDR}>`, // from: '"Fred Foo 👻" <foo@example.com>', // sender address
 			to: to, // list of receivers
 			subject, // Subject line
 			text, // plain text body
@@ -199,8 +199,8 @@ export class UserService {
 	}
 
 	async sendVerificationEmail(email: string, token: string) {
-		const verification_email_config = this.configService.get<AuthConfig['auth']['verification_email']>('auth.verification_email');
-		let sitename = this.configService.get<AuthConfig['app_name_he']>('app_name_he') || "אתר תוצרת הילמה",
+		const verification_email_config = this.configService.get<AuthConfigVerificationEmail>('auth.verification_email');
+		let sitename = this.configService.get<AuthConfigAppNameHe>('app_name_he') || "אתר תוצרת הילמה",
 			htmlConf = verification_email_config.html,
 			verifyPath = verification_email_config.verifyPath || "/verify",
 			imagePlace = verification_email_config.logoDiv,
@@ -235,18 +235,23 @@ export class UserService {
 		}
 	}
 
-
 	/**
 	 * Creates a login response for a controller's endpoint
 	 * @param user A user request type created by validate user
 	 * @param res The response object from the controller's endpoint
+	 * @param ttl The expiration of the cookies and access token in ms. default to the ttl in `configuration.ts` or 5 hours
 	 * @returns A login response consisting of the user request and the cookies that are attached to the response object
 	 */
 	login(user: RequestUserType, res: Response, ttl?: number) {
-		ttl = ttl ?? this.configService.get<AuthConfig['auth']['ttl'][keyof AuthConfig['auth']['ttl']]>(`auth.ttl.${user.type}`) ?? DEFAULT_MAX_AGE;
+		ttl = ttl ?? this.configService.get<AuthConfigTtl[keyof AuthConfigTtl]>(`auth.ttl.${user.type}`) ?? DEFAULT_MAX_AGE;
+
+		const accessTokenCookie = this.configService.get<AuthConfigAccessTokenCookie>('auth.accessToken_cookie') ?? 'access_token';
 
 		const cookies = {
-			[this.configService.get<AuthConfig['auth']['accessToken_cookie']>('auth.accessToken_cookie') ?? 'access_token']: this.jwtService.sign(user, { expiresIn: ttl, secret: this.configService.get<AuthConfig['auth']['secretOrKey']>('auth.secretOrKey') ?? jwtConstants.secret }),
+			[accessTokenCookie]: this.jwtService.sign(user, {
+				expiresIn: ttl,
+				secret: this.configService.get<AuthConfigSecretOrKey>('auth.secretOrKey') ?? jwtConstants.secret
+			}),
 			klo: this.getKlos(user.roles),
 			kl: randomstring.generate({ length: 68 }),
 			kloo: randomstring.generate({ length: 68 }),

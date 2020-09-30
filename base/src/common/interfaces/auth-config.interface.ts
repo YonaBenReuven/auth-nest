@@ -23,10 +23,24 @@ export interface AuthConfig {
 
 	app_name_he?: string;
 
-	roleAccessConfig: {
+	roleAccess: {
 		[role: string]: {
 			components: string[];
 			defaultHomePage: string;
 		};
 	};
 }
+
+export type AuthConfigTtl = AuthConfig['auth']['ttl'];
+
+export type AuthConfigVerificationEmail = AuthConfig['auth']['verification_email'];
+
+export type AuthConfigSecretOrKey = AuthConfig['auth']['secretOrKey'];
+
+export type AuthConfigAccessTokenCookie = AuthConfig['auth']['accessToken_cookie'];
+
+export type AuthConfigAppName = AuthConfig['app_name'];
+
+export type AuthConfigAppNameHe = AuthConfig['app_name_he'];
+
+export type AuthConfigRoleAccess = AuthConfig['roleAccess'];

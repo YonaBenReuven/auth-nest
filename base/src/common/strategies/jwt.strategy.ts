@@ -5,7 +5,7 @@ import { Strategy } from 'passport-jwt';
 
 import { jwtConstants } from '../constants';
 import { extractTokenFromCookie } from '../functions/extract-token-from-cookie.function';
-import { AuthConfig } from '../interfaces/auth-config.interface';
+import { AuthConfigAccessTokenCookie, AuthConfigSecretOrKey } from '../interfaces/auth-config.interface';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -13,9 +13,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 		private readonly configService: ConfigService,
 	) {
 		super({
-			jwtFromRequest: extractTokenFromCookie(configService.get<AuthConfig['auth']['accessToken_cookie']>('auth.accessToken_cookie') ?? 'access_token'),
+			jwtFromRequest: extractTokenFromCookie(configService.get<AuthConfigAccessTokenCookie>('auth.accessToken_cookie') ?? 'access_token'),
 			ignoreExpiration: false,
-			secretOrKey: configService.get<AuthConfig['auth']['secretOrKey']>('auth.secretOrKey') ?? jwtConstants.secret,
+			secretOrKey: configService.get<AuthConfigSecretOrKey>('auth.secretOrKey') ?? jwtConstants.secret,
 		});
 	}
 

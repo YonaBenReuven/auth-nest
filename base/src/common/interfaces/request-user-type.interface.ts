@@ -6,4 +6,6 @@ export interface RequestUserType {
 	type: string;
 
 	roles: string[];
+
+	roleKeys: string[];
 }

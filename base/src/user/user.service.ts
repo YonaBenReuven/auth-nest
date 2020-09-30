@@ -93,7 +93,7 @@ export class UserService {
 	 * @param roles An array of strings representing a user's roles
 	 * @returns A string that is an encoded version of a user's components and default home page
 	 */
-	getKlos(roles: string[]) {
+	getKlos(roles: string[], roleKeys: string[]) {
 		const { a, b } = roles
 			.map(role => this.configService.get<AuthConfigRoleAccess[keyof AuthConfigRoleAccess]>(`roleAccess.${role}`))
 			.filter(roleAccessConfig => !!roleAccessConfig)
@@ -103,7 +103,9 @@ export class UserService {
 
 		const klo = base64.encode(JSON.stringify({ a, b })).replace(/==|=/gm, '');
 
-		return klo;
+		const kl = base64.encode(JSON.stringify(roleKeys)).replace(/==|=/gm, '');
+
+		return { klo, kl };
 	}
 	/**
 	 * Produces a user's klos by its id
@@ -117,9 +119,9 @@ export class UserService {
 			.of(id)
 			.loadMany() as Role[];
 
-		const klo = this.getKlos(roles.map(role => role.name));
+		const klos = this.getKlos(roles.map(role => role.name), roles.map(role => role.roleKey));
 
-		return klo;
+		return klos;
 	}
 	/**
 	 * Validates a user by its username and password
@@ -150,7 +152,8 @@ export class UserService {
 			id: user.id,
 			username: user.username,
 			type: user.type,
-			roles: user.roles.map(role => role.name)
+			roles: user.roles.map(role => role.name),
+			roleKeys: user.roles.map(role => role.roleKey)
 		}
 
 		return requestUser;
@@ -247,15 +250,18 @@ export class UserService {
 
 		const accessTokenCookie = this.configService.get<AuthConfigAccessTokenCookie>('auth.accessToken_cookie') ?? 'access_token';
 
+		const klos = this.getKlos(user.roles, user.roleKeys);
+
+		const accessToken = this.jwtService.sign(user, {
+			expiresIn: ttl,
+			secret: this.configService.get<AuthConfigSecretOrKey>('auth.secretOrKey') ?? jwtConstants.secret
+		});
+
 		const cookies = {
-			[accessTokenCookie]: this.jwtService.sign(user, {
-				expiresIn: ttl,
-				secret: this.configService.get<AuthConfigSecretOrKey>('auth.secretOrKey') ?? jwtConstants.secret
-			}),
-			klo: this.getKlos(user.roles),
-			kl: randomstring.generate({ length: 68 }),
-			kloo: randomstring.generate({ length: 68 }),
-			klk: randomstring.generate({ length: 68 }),
+			...klos,
+			[accessTokenCookie]: accessToken,
+			kloo: this.generateStringInRange(accessToken, klos.klo),
+			klk: this.generateStringInRange(accessToken, klos.klo),
 		};
 
 		for (const key in cookies) {
@@ -299,7 +305,7 @@ export class UserService {
 		if (userInst) {
 			debug('Logged using forced login:', userInst)//WE DONT CARE HOW DID YOU LOGGED IN
 
-			return this.login({ ...userInst, roles: userInst.roles.map(role => role.name) }, res);
+			return this.login({ ...userInst, roles: userInst.roles.map(role => role.name), roleKeys: userInst.roles.map(role => role.roleKey) }, res);
 
 		}
 		else {
@@ -313,6 +319,14 @@ export class UserService {
 
 	async allUsers(): Promise<User[]> {
 		return this.userRepository.find();
+	}
+
+	generateStringInRange(string1: string, string2: string) {
+		const [shortLength, longLength] = [string1.length, string2.length].sort((a, b) => a - b);
+
+		return randomstring.generate({
+			length: Math.floor(Math.random() * (1 + longLength - shortLength)) + shortLength + Math.floor(Math.random() * 21) - 10
+		});
 	}
 }
 

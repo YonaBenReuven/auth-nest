@@ -36,6 +36,9 @@ export class UserService {
 	) { }
 
 	async createUser(user: DeepPartial<User>) {
+		if (!(user instanceof User)) // The hash function does not apply for objects that r not User instances. 
+			user.password = bcrypt.hashSync(user.password, SALT)
+
 		let res = await this.userRepository.save(user);
 		if (this.config_options.emailVerification) {
 			let userAndToken = await this.generateVerificationTokenAndSave(res);

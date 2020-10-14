@@ -16,6 +16,9 @@ export const CreateAuthGuard = (type?: string | string[]) => class CreateAuthGua
 
 	async canActivate(context: ExecutionContext) {
 		const isAuthenticated = await super.canActivate(context);
+		const roles = this.reflector.get<string[]>('roles', context.getHandler());
+		if (roles && roles.includes("$everyone"))
+			return true;
 
 		if (!isAuthenticated) {
 			if (type === 'local' || type === 'jwt') throw new UnauthorizedException();
@@ -23,7 +26,6 @@ export const CreateAuthGuard = (type?: string | string[]) => class CreateAuthGua
 		}
 
 		const entities = this.reflector.get<Array<typeof User>>('entities', context.getHandler());
-		const roles = this.reflector.get<string[]>('roles', context.getHandler());
 
 		const request = context.switchToHttp().getRequest();
 		const user = request.user as RequestUserType;

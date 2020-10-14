@@ -68,7 +68,7 @@ export class UserService {
 	 * @returns A boolean that indicates if the roles match, i.e. if some of the user's roles are in the given array
 	 */
 	matchRoles(userRoles: string[], roles: string[]) {
-		return userRoles.some(role => roles.includes(role));
+		return userRoles.some(role => roles.includes(role)) || roles.includes("$authenticated")
 	}
 	/**
 	 * Matches a user's roles by its id to a given array of roles

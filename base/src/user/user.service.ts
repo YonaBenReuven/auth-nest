@@ -10,7 +10,7 @@ import * as randomstring from 'randomstring';
 import { render } from 'mustache';
 import * as crypto from 'crypto';
 
-import { AuthConfig, AuthConfigAccessTokenCookie, AuthConfigAppName, AuthConfigAppNameHe, AuthConfigRoleAccess, AuthConfigSecretOrKey, AuthConfigTtl, AuthConfigVerificationEmail } from '../common/interfaces/auth-config.interface';
+import { AuthConfigAccessTokenCookie, AuthConfigAppName, AuthConfigAppNameHe, AuthConfigRoleAccess, AuthConfigSecretOrKey, AuthConfigTtl, AuthConfigVerificationEmail } from '../common/interfaces/auth-config.interface';
 import { RequestUserType } from '../common/interfaces/request-user-type.interface';
 import { DEFAULT_MAX_AGE, jwtConstants, SALT } from '../common/constants';
 import { MailerInterface, MailAttachments } from '../mails/mailer.interface';
@@ -35,17 +35,20 @@ export class UserService {
 		protected readonly mailer?: MailerInterface
 	) { }
 
-	async createUser(user: DeepPartial<User>) {
-		if (!(user instanceof User)) // The hash function does not apply for objects that r not User instances. 
-			user.password = bcrypt.hashSync(user.password, SALT)
+	async createUser<U extends User = User>(user: DeepPartial<U>) {
+		if (!(user instanceof User)) { // The hash function does not apply for objects that r not User instances. 
+			(user as DeepPartial<User>).password = bcrypt.hashSync(user.password, SALT)
+		}
 
-		let res = await this.userRepository.save(user);
+		const res = await this.userRepository.save(user);
+
 		if (this.config_options.emailVerification) {
 			let userAndToken = await this.generateVerificationTokenAndSave(res);
 			this.sendVerificationEmail(userAndToken.username, userAndToken.verificationToken);
 			return userAndToken;
 		}
-		else res;
+
+		else return res;
 	}
 	/**
 	 * Gets a user's roles by its id

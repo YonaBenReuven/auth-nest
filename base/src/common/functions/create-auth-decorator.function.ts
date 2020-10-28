@@ -4,12 +4,19 @@ import { User } from '../../user/user.entity';
 import { UseAuthGuard } from '../interfaces/use-auth-guard.interface';
 import { Roles } from '../decorators/roles.decorator';
 import { Entities } from '../decorators/entities.decorator';
+import { UseJwtInterceptor } from '../decorators/use-jwt-interceptor.decorator';
 
-export const createAuthDecorator = (Guard: CanActivate | Function): UseAuthGuard => <T extends typeof User>(
+import { CreateAuthGuard } from './create-auth-guard.function';
+
+export const createAuthDecorator = (Guard: CanActivate | Function | ReturnType<typeof CreateAuthGuard>): UseAuthGuard => <T extends typeof User>(
 	config?: any,
 	...rest: any
 ) => {
 	if (!config) return applyDecorators(UseGuards(Guard));
+
+	if (config === '$everyone' && (Guard as ReturnType<typeof CreateAuthGuard>).type === 'jwt') return applyDecorators(
+		UseJwtInterceptor()
+	);
 
 	if (typeof config === "string") return applyDecorators(
 		Roles(config, ...rest as string[]),

@@ -33,7 +33,17 @@ export class User {
 	type!: string;
 
 	@ManyToMany(_type => Role)
-	@JoinTable({ name: 'user_role' })
+	@JoinTable({
+		name: 'user_role',
+		joinColumn: {
+			name: 'user_id',
+			referencedColumnName: 'id'
+		},
+		inverseJoinColumn: {
+			name: 'role_id',
+			referencedColumnName: 'id'
+		}
+	})
 	roles!: Role[];
 
 	@BeforeInsert()

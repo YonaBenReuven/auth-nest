@@ -31,8 +31,15 @@ export const CreateAuthGuard = (type?: string | string[]) => class CreateAuthGua
 		const request = context.switchToHttp().getRequest();
 		const user = request.user as RequestUserType;
 
-		const canActivate = ((entities && entities.length > 0) ? this.userService.matchEntities(user.type, entities) : true) ||
-			((roles && roles.length > 0) ? this.userService.matchRoles(user.roles, roles) : true);
+		const rolesCanActivate = (roles && roles.length > 0) ? this.userService.matchRoles(user.roles, roles) : true;
+		const entitiesCanActivate = (entities && entities.length > 0) ? this.userService.matchEntities(user.type, entities) : true;
+
+		let canActivate: boolean;
+
+		if ((!roles || roles.length === 0) && (!entities || entities.length === 0)) canActivate = true;
+		else if ((roles && roles.length > 0) && (!entities || entities.length === 0)) canActivate = rolesCanActivate;
+		else if ((!roles || roles.length === 0) && (entities && entities.length > 0)) canActivate = entitiesCanActivate;
+		else canActivate = rolesCanActivate || entitiesCanActivate;
 
 		if (!canActivate) {
 			if (type === 'local' || type === 'jwt') throw new UnauthorizedException();

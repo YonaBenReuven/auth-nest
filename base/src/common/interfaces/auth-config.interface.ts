@@ -14,6 +14,16 @@ export interface AuthConfig {
 			subject?: string;
 		};
 
+		reset_password_email?: {
+			welcome_to?: string,
+			changePath?: string,
+			html?: string,
+			text?: string,
+			logoDiv?: string,
+			logoPath?: string,
+			subject?: string
+		}
+
 		secretOrKey?: string;
 
 		accessToken_cookie?: string
@@ -34,6 +44,8 @@ export interface AuthConfig {
 export type AuthConfigTtl = AuthConfig['auth']['ttl'];
 
 export type AuthConfigVerificationEmail = AuthConfig['auth']['verification_email'];
+
+export type AuthConfigResetPasswordEmail = AuthConfig['auth']['reset_password_email'];
 
 export type AuthConfigSecretOrKey = AuthConfig['auth']['secretOrKey'];
 

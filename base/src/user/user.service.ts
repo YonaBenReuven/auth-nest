@@ -10,11 +10,11 @@ import * as randomstring from 'randomstring';
 import { render } from 'mustache';
 import * as crypto from 'crypto';
 
-import { AuthConfigAccessTokenCookie, AuthConfigAppName, AuthConfigAppNameHe, AuthConfigRoleAccess, AuthConfigSecretOrKey, AuthConfigTtl, AuthConfigVerificationEmail } from '../common/interfaces/auth-config.interface';
+import { AuthConfigAccessTokenCookie, AuthConfigAppName, AuthConfigAppNameHe, AuthConfigResetPasswordEmail, AuthConfigRoleAccess, AuthConfigSecretOrKey, AuthConfigTtl, AuthConfigVerificationEmail } from '../common/interfaces/auth-config.interface';
 import { RequestUserType } from '../common/interfaces/request-user-type.interface';
 import { DEFAULT_MAX_AGE, jwtConstants, SALT } from '../common/constants';
 import { MailerInterface, MailAttachments } from '../mails/mailer.interface';
-import { VerifyMailTemplate } from '../mails/verifyMail.template';
+import { ResetPasswordTemplate, VerifyMailTemplate } from '../mails/verifyMail.template';
 import { Role } from '../role/role.entity';
 
 import { User } from './user.entity';
@@ -245,6 +245,31 @@ export class UserService {
 	}
 
 	/**
+		 * This function generates a change-password token for EMAIL, and sends the email.
+		 * @param {string} email
+		 */
+	async sendChangePasswordEmail(email: string) {
+		let token = await (await this.generateVerificationTokenAndSave({ username: email })).verificationToken;
+		const reset_pass_email_config = this.configService.get<AuthConfigResetPasswordEmail>('auth.reset_password_email');
+		let sitename = this.configService.get<AuthConfigAppName>('app_name_he') || "אתר תוצרת הילמה",
+			htmlConf = reset_pass_email_config.html,
+			changePath = reset_pass_email_config.changePath || "/changePassword/",
+			imagePlace = reset_pass_email_config.logoDiv,
+			logoPath = reset_pass_email_config.logoPath,
+			subject = reset_pass_email_config.subject || "היי, כאן משנים את הסיסמה",
+			text = reset_pass_email_config.text;
+
+		if (!htmlConf)
+			htmlConf = ResetPasswordTemplate;
+		let html = render(htmlConf, { sitename, changePath, token, placeForLogo: imagePlace });
+		text && (text = render(text, { sitename, changePath, token, placeForLogo: imagePlace }));
+
+		const attchments = logoPath && imagePlace ? [{ cid: "logo", path: logoPath }] : [];
+		this.sendEmail(email, subject, text, html, attchments);
+	}
+
+
+	/**
 	 * Creates a login response for a controller's endpoint
 	 * @param user A user request type created by validate user
 	 * @param res The response object from the controller's endpoint
@@ -322,6 +347,42 @@ export class UserService {
 			return this.login({ ...newUser, roles: newUser.roles.map(role => role.name) }, res);
 		}
 	}
+
+	async forceLoginUpdateFields(user, uniqeField, fields: Array<string>, res: Response, roles?: Role[]) {
+		/**
+		 * @param user 
+		 * @param uniqeField - identified field 
+		 * @param fields - the fields that we want to update for this user, in case they've changed.
+		 * @param res - http response, for cookies 
+		 */
+
+
+		if (!user[uniqeField]) {
+			debug("User tried to force login:", user);
+			return {}
+		}
+		let userInst = await this.userRepository.findOne(
+			{ where: { username: user[uniqeField] }, relations: ["roles"] });
+		if (userInst) {
+			let haveChange = false;
+
+			for (let key of fields) {
+				if (userInst[key] != user[key]) {
+					userInst[key] = user[key];
+					haveChange = true;
+				}
+			}
+			haveChange && this.userRepository.save(userInst);
+			return this.login({ ...userInst, roles: userInst.roles.map(role => role.name), roleKeys: userInst.roles.map(role => role.roleKey) }, res);
+		}
+		else {
+			let newUser = { ...user, username: user[uniqeField], password: null, emailVerified: 1, roles: roles || [] }
+			this.userRepository.save(newUser);
+			debug("New user instance: ", newUser);
+			return this.login({ ...newUser, roles: roles.map(role => role.name), roleKeys: roles.map(role => role.roleKey) }, res);
+		}
+	}
+
 
 	async allUsers(): Promise<User[]> {
 		return this.userRepository.find();

@@ -17,10 +17,7 @@ export const createUserModuleMetadata = (
 	imports: [
 		RoleModule,
 		TypeOrmModule.forFeature([User]),
-		JwtModule.register({
-			secret: jwtConstants.secret,
-			signOptions: { expiresIn: options.maxAge || '100min' },
-		})
+		JwtModule.register({})
 	],
 	providers: [
 		{

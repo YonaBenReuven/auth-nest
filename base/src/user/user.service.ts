@@ -261,11 +261,36 @@ export class UserService {
 
 		if (!htmlConf)
 			htmlConf = ResetPasswordTemplate;
-		let html = render(htmlConf, { sitename, changePath, token, placeForLogo: imagePlace });
-		text && (text = render(text, { sitename, changePath, token, placeForLogo: imagePlace }));
+		let html = render(htmlConf, { sitename, changePath, token, placeForLogo: imagePlace, email });
+		text && (text = render(text, { sitename, changePath, token, placeForLogo: imagePlace, email }));
 
 		const attchments = logoPath && imagePlace ? [{ cid: "logo", path: logoPath }] : [];
 		this.sendEmail(email, subject, text, html, attchments);
+	}
+
+
+	async changePasswordWithToken(token: string, email: string, newPassword: string) {
+		if (!token || !newPassword) {
+			debug('you cannot change password without token or string');
+			return false;
+		}
+		if (this.userRepository.metadata.propertiesMap.emailVerified)
+			try {
+				newPassword = bcrypt.hashSync(newPassword, SALT);
+
+				const updateSuccess = await this.userRepository.manager.query(
+					'UPDATE user SET password=?,verificationToken=null WHERE username=? AND verificationToken=?', [newPassword, email, token]);
+
+				return updateSuccess.changedRows
+			}
+			catch (err) {
+				console.error("Error while change password with token email: %s", err);
+				return false;
+			}
+		else {
+			console.error("Cannot change password when `verificationToken` column dosent exist.")
+			process.exit(1)
+		}
 	}
 
 

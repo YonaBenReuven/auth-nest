@@ -10,7 +10,7 @@ export const VerifyMailTemplate = `
 
 export const ResetPasswordTemplate = `<div style={{ direction: 'rtl' }}><h3> איפוס סיסמה באתר {{sitename}}!</h3>
 <p>היי, ביקשתם לשנות את הסיסמה </p>
-<p>לחצו על הקישור <a href="${env.REACT_APP_DOMAIN}/api{{verifyPath}}?token={{token}}">כאן</a> כדי לשנות את הסיסמה שלכם למערכת🔒</p>
+<p>לחצו על הקישור <a href="${env.REACT_APP_DOMAIN}/api{{verifyPath}}?token={{token}}&email={{email}}">כאן</a> כדי לשנות את הסיסמה שלכם למערכת🔒</p>
 {{{placeForLogo}}}
 </div>`
 

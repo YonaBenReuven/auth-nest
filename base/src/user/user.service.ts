@@ -12,7 +12,7 @@ import * as crypto from 'crypto';
 
 import { AuthConfigAccessTokenCookie, AuthConfigAppName, AuthConfigAppNameHe, AuthConfigResetPasswordEmail, AuthConfigRoleAccess, AuthConfigSecretOrKey, AuthConfigTtl, AuthConfigVerificationEmail } from '../common/interfaces/auth-config.interface';
 import { RequestUserType } from '../common/interfaces/request-user-type.interface';
-import { DEFAULT_MAX_AGE, jwtConstants, SALT } from '../common/constants';
+import { DEFAULT_MAX_AGE, EMAIL_VERIFIED, jwtConstants, SALT, VERIFICATION_TOKEN } from '../common/constants';
 import { MailerInterface, MailAttachments } from '../mails/mailer.interface';
 import { ResetPasswordTemplate, VerifyMailTemplate } from '../mails/verifyMail.template';
 import { Role } from '../role/role.entity';
@@ -44,7 +44,7 @@ export class UserService {
 
 		if (this.config_options.emailVerification) {
 			let userAndToken = await this.generateVerificationTokenAndSave(res);
-			this.sendVerificationEmail(userAndToken.username, userAndToken.verificationToken);
+			this.sendVerificationEmail(userAndToken.username, userAndToken[VERIFICATION_TOKEN]);
 			return userAndToken;
 		}
 
@@ -141,7 +141,7 @@ export class UserService {
 			.createQueryBuilder('user')
 			.addSelect('user.password')
 			.addSelect('user.type')
-			.addSelect(this.config_options.emailVerification ? 'user.emailVerified' : '')
+			.addSelect(this.config_options.emailVerification ? `user.${EMAIL_VERIFIED}` : '')
 			.leftJoinAndSelect('user.roles', 'role')
 			.where({ username })
 			.getOne();
@@ -151,8 +151,20 @@ export class UserService {
 			return null;
 		}
 		if (!bcrypt.compareSync(pass, user.password)) return null;
-		if (this.config_options.emailVerification && !(user as User & { emailVerified: any }).emailVerified)//user didnt verified his email
-			return null;
+
+		if (this.config_options.emailVerification)
+			if (!(user as User & { [EMAIL_VERIFIED]: any })[EMAIL_VERIFIED])//user didnt verified his email
+				return null;
+
+			else if (user[VERIFICATION_TOKEN]) { //user managed to log in even there is a waiting reset-password token for him
+				try {
+					await this.userRepository.manager.query(
+						`UPDATE user SET ${VERIFICATION_TOKEN}=null WHERE id=?`, [user.id]);
+				}
+				catch (error) {
+					console.error("Could not update verification token in validateUser:", error);
+				}
+			}
 
 		const requestUser: RequestUserType = {
 			id: user.id,
@@ -167,10 +179,10 @@ export class UserService {
 
 	async verifyEmailByToken(token: string): Promise<boolean> {
 		if (this.config_options.emailVerification)
-			if (this.userRepository.metadata.propertiesMap.emailVerified)
+			if (this.userRepository.metadata.propertiesMap[EMAIL_VERIFIED])
 				try {
 					const verificationSuccess = await this.userRepository.manager.query(
-						'UPDATE user SET emailVerified=1,verificationToken=null WHERE verificationToken=?', [token]);
+						`UPDATE user SET ${EMAIL_VERIFIED}=1,${VERIFICATION_TOKEN}=null WHERE ${VERIFICATION_TOKEN}=?`, [token]);
 
 					return verificationSuccess.changedRows
 				}
@@ -179,7 +191,7 @@ export class UserService {
 					return false;
 				}
 			else {
-				console.error("Cannot verify emails when `verificationToken` column dosent exist.")
+				console.error(`Cannot verify emails when "${VERIFICATION_TOKEN}" column dosent exist.`)
 				process.exit(1)
 			}
 	}
@@ -236,9 +248,9 @@ export class UserService {
 		try {
 			let token = this.generateVerificationToken();
 			const updateSuccess = await this.userRepository.manager.query(
-				'UPDATE user SET verificationToken=? WHERE id=?', [token, user.id]);
+				`UPDATE user SET ${VERIFICATION_TOKEN}=? WHERE id=?`, [token, user.id]);
 
-			return { ...user, verificationToken: token }
+			return { ...user, [VERIFICATION_TOKEN]: token }
 		} catch (err) {
 
 		}
@@ -249,7 +261,7 @@ export class UserService {
 		 * @param {string} email
 		 */
 	async sendChangePasswordEmail(email: string) {
-		let token = await (await this.generateVerificationTokenAndSave({ username: email })).verificationToken;
+		let token = await (await this.generateVerificationTokenAndSave({ username: email }))[VERIFICATION_TOKEN];
 		const reset_pass_email_config = this.configService.get<AuthConfigResetPasswordEmail>('auth.reset_password_email');
 		let sitename = this.configService.get<AuthConfigAppName>('app_name_he') || "אתר תוצרת הילמה",
 			htmlConf = reset_pass_email_config.html,
@@ -274,12 +286,12 @@ export class UserService {
 			debug('you cannot change password without token or string');
 			return false;
 		}
-		if (this.userRepository.metadata.propertiesMap.emailVerified)
+		if (this.userRepository.metadata.propertiesMap[EMAIL_VERIFIED])
 			try {
 				newPassword = bcrypt.hashSync(newPassword, SALT);
 
 				const updateSuccess = await this.userRepository.manager.query(
-					'UPDATE user SET password=?,verificationToken=null WHERE username=? AND verificationToken=?', [newPassword, email, token]);
+					`UPDATE user SET password=?,${VERIFICATION_TOKEN}=null WHERE username=? AND ${VERIFICATION_TOKEN}=?`, [newPassword, email, token]);
 
 				return updateSuccess.changedRows
 			}
@@ -288,7 +300,7 @@ export class UserService {
 				return false;
 			}
 		else {
-			console.error("Cannot change password when `verificationToken` column dosent exist.")
+			console.error(`Cannot change password when "${VERIFICATION_TOKEN}" column dosent exist.`)
 			process.exit(1)
 		}
 	}
@@ -366,7 +378,7 @@ export class UserService {
 		}
 		else {
 			//Create new user ~WITH NO PASSWORD~
-			let newUser = { ...user, username: user[field], password: null, emailVerified: 1, roles: roles || [] }
+			let newUser = { ...user, username: user[field], password: null, [EMAIL_VERIFIED]: 1, roles: roles || [] }
 			this.userRepository.save(newUser);
 			debug("New user instance: ", newUser);
 			return this.login({ ...newUser, roles: newUser.roles.map(role => role.name) }, res);
@@ -401,7 +413,7 @@ export class UserService {
 			return this.login({ ...userInst, roles: userInst.roles.map(role => role.name), roleKeys: userInst.roles.map(role => role.roleKey) }, res);
 		}
 		else {
-			let newUser = { ...user, username: user[uniqeField], password: null, emailVerified: 1, roles: roles || [] }
+			let newUser = { ...user, username: user[uniqeField], password: null, [EMAIL_VERIFIED]: 1, roles: roles || [] }
 			this.userRepository.save(newUser);
 			debug("New user instance: ", newUser);
 			return this.login({ ...newUser, roles: roles.map(role => role.name), roleKeys: roles.map(role => role.roleKey) }, res);

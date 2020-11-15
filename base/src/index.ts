@@ -27,4 +27,4 @@ export { UserService } from './user/user.service';
 export { MailerInterface, MailAttachments } from './mails/mailer.interface';
 export { NodeMailerService } from './mails/MailService';
 export { NodeMailerModule } from './mails/MailModule';
-export { VerifyMailTemplate } from './mails/verifyMail.template';
+export { VerifyMailTemplate, ResetPasswordTemplate } from './mails/verifyMail.template';

@@ -24,6 +24,12 @@ export interface AuthConfig {
 			subject?: string
 		}
 
+		access_logger?: {
+			enable: boolean;
+			minutes?: number;
+			tries?: number
+		};
+
 		secretOrKey?: string;
 
 		accessToken_cookie?: string
@@ -56,3 +62,5 @@ export type AuthConfigAppName = AuthConfig['app_name'];
 export type AuthConfigAppNameHe = AuthConfig['app_name_he'];
 
 export type AuthConfigRoleAccess = AuthConfig['roleAccess'];
+
+export declare type AuthConfigAccessLogger = AuthConfig['auth']['access_logger'];

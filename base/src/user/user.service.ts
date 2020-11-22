@@ -10,7 +10,7 @@ import * as randomstring from 'randomstring';
 import { render } from 'mustache';
 import * as crypto from 'crypto';
 
-import { AuthConfigAccessTokenCookie, AuthConfigAppName, AuthConfigAppNameHe, AuthConfigResetPasswordEmail, AuthConfigRoleAccess, AuthConfigSecretOrKey, AuthConfigTtl, AuthConfigVerificationEmail } from '../common/interfaces/auth-config.interface';
+import { AuthConfigAccessLogger, AuthConfigAccessTokenCookie, AuthConfigAppName, AuthConfigAppNameHe, AuthConfigResetPasswordEmail, AuthConfigRoleAccess, AuthConfigSecretOrKey, AuthConfigTtl, AuthConfigVerificationEmail } from '../common/interfaces/auth-config.interface';
 import { RequestUserType } from '../common/interfaces/request-user-type.interface';
 import { DEFAULT_MAX_AGE, EMAIL_VERIFIED, jwtConstants, SALT, VERIFICATION_TOKEN } from '../common/constants';
 import { MailerInterface, MailAttachments } from '../mails/mailer.interface';
@@ -19,6 +19,8 @@ import { Role } from '../role/role.entity';
 
 import { User } from './user.entity';
 import { UserConfig } from './user.config.interface';
+import { LoginErrorCodes } from '../common/loginErrorCodes';
+import { AccessLoggerService } from '../access-logger/access-logger.service';
 
 const debug = require('debug')('model:User');
 
@@ -32,7 +34,9 @@ export class UserService {
 		protected readonly jwtService: JwtService,
 		protected readonly configService: ConfigService,
 		@Optional() @Inject('MailService')
-		protected readonly mailer?: MailerInterface
+		protected readonly mailer?: MailerInterface,
+		@Optional()
+		protected readonly access_logger?: AccessLoggerService
 	) { }
 
 	async createUser<U extends User = User>(user: DeepPartial<U>) {
@@ -137,25 +141,35 @@ export class UserService {
 	 * Otherwise, i.e. if the username doesn't exits or the password is incorrect, null is returned
 	 */
 	async validateUser(username: string, pass: string) {
-		const user = await this.userRepository
+		const user: any = await this.userRepository
 			.createQueryBuilder('user')
 			.addSelect('user.password')
 			.addSelect('user.type')
-			.addSelect(this.config_options.emailVerification ? `user.${EMAIL_VERIFIED}` : '')
+			.addSelect(this.config_options.emailVerification ? 'user.emailVerified' : '')
+			.addSelect(this.config_options.emailVerification ? `user.${VERIFICATION_TOKEN}` : '')
 			.leftJoinAndSelect('user.roles', 'role')
 			.where({ username })
 			.getOne();
 
-		if (!user) return null;
+		if (!user)
+			throw LoginErrorCodes.NoUsername;
+
 		if (!user.password) {
-			return null;
+			throw LoginErrorCodes.UserHasNoPassword;
 		}
-		if (!bcrypt.compareSync(pass, user.password)) return null;
 
-		if (this.config_options.emailVerification)
-			if (!(user as User & { [EMAIL_VERIFIED]: any })[EMAIL_VERIFIED])//user didnt verified his email
-				return null;
+		const enableAccess_logger = this.configService.get<AuthConfigAccessLogger>('auth.access_logger');
 
+
+		if (!bcrypt.compareSync(pass, user.password)) {
+			enableAccess_logger && enableAccess_logger.enable && this.access_logger.loginEvent(user as Partial<User>, false, enableAccess_logger.minutes, enableAccess_logger.tries);
+			throw LoginErrorCodes.PassDosentMatch;
+		}
+		if (this.config_options.emailVerification)//user didnt verified his email
+			if (!user.emailVerified) {
+				enableAccess_logger && enableAccess_logger.enable && this.access_logger.loginEvent(user as Partial<User>, false, enableAccess_logger.minutes, enableAccess_logger.tries);
+				throw LoginErrorCodes.EmailNotVerified;
+			}
 			else if (user[VERIFICATION_TOKEN]) { //user managed to log in even there is a waiting reset-password token for him
 				try {
 					await this.userRepository.manager.query(
@@ -165,7 +179,6 @@ export class UserService {
 					console.error("Could not update verification token in validateUser:", error);
 				}
 			}
-
 		const requestUser: RequestUserType = {
 			id: user.id,
 			username: user.username,
@@ -173,8 +186,15 @@ export class UserService {
 			roles: user.roles.map(role => role.name),
 			roleKeys: user.roles.map(role => role.roleKey)
 		}
+		if (enableAccess_logger && enableAccess_logger.enable) {
+			let canLogin = await this.access_logger.loginEvent(user as Partial<User>, true, enableAccess_logger.minutes, enableAccess_logger.tries);
+			if (canLogin)
+				return requestUser;
+			else throw LoginErrorCodes.UserBlocked;
+		}
+		else
+			return requestUser;
 
-		return requestUser;
 	}
 
 	async verifyEmailByToken(token: string): Promise<boolean> {

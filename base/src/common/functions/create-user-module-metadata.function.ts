@@ -10,6 +10,7 @@ import { UserService } from '../../user/user.service';
 import { jwtConstants, USER_MODULE_OPTIONS } from '../constants';
 import { LocalStrategy } from '../strategies/local.strategy';
 import { JwtStrategy } from '../strategies/jwt.strategy';
+import { AccessLoggerModule } from '../../access-logger';
 
 export const createUserModuleMetadata = (
 	options: UserConfig = {}
@@ -17,7 +18,8 @@ export const createUserModuleMetadata = (
 	imports: [
 		RoleModule,
 		TypeOrmModule.forFeature([User]),
-		JwtModule.register({})
+		JwtModule.register({}),
+		...(options.set_access_logger && [AccessLoggerModule] || [])
 	],
 	providers: [
 		{

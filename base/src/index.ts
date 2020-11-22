@@ -28,3 +28,5 @@ export { MailerInterface, MailAttachments } from './mails/mailer.interface';
 export { NodeMailerService } from './mails/MailService';
 export { NodeMailerModule } from './mails/MailModule';
 export { VerifyMailTemplate, ResetPasswordTemplate } from './mails/verifyMail.template';
+export { LoginErrorCodes } from './common/loginErrorCodes';
+export { AccessLogger, AccessLoggerModule, AccessLoggerService } from './access-logger'

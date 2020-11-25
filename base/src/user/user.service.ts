@@ -399,7 +399,7 @@ export class UserService {
 		else {
 			//Create new user ~WITH NO PASSWORD~
 			let newUser = { ...user, username: user[field], password: null, [EMAIL_VERIFIED]: 1, roles: roles || [] }
-			this.userRepository.save(newUser);
+			newUser = await this.userRepository.save(newUser);
 			debug("New user instance: ", newUser);
 			return this.login({ ...newUser, roles: newUser.roles.map(role => role.name) }, res);
 		}
@@ -434,7 +434,7 @@ export class UserService {
 		}
 		else {
 			let newUser = { ...user, username: user[uniqeField], password: null, [EMAIL_VERIFIED]: 1, roles: roles || [] }
-			this.userRepository.save(newUser);
+			newUser = await this.userRepository.save(newUser);
 			debug("New user instance: ", newUser);
 			return this.login({ ...newUser, roles: roles.map(role => role.name), roleKeys: roles.map(role => role.roleKey) }, res);
 		}

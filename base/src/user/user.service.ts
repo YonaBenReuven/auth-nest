@@ -169,12 +169,12 @@ export class UserService {
 
 
 		if (!bcrypt.compareSync(pass, user.password)) {
-			enableAccess_logger && enableAccess_logger.enable && this.access_logger.loginEvent(user as Partial<User>, false, enableAccess_logger.minutes, enableAccess_logger.tries);
+			enableAccess_logger && enableAccess_logger.enable && this.access_logger && this.access_logger.loginEvent(user as Partial<User>, false, enableAccess_logger.minutes, enableAccess_logger.tries);
 			throw LoginErrorCodes.PassDosentMatch;
 		}
 		if (this.config_options.emailVerification)//user didnt verified his email
 			if (!user.emailVerified) {
-				enableAccess_logger && enableAccess_logger.enable && this.access_logger.loginEvent(user as Partial<User>, false, enableAccess_logger.minutes, enableAccess_logger.tries);
+				enableAccess_logger && enableAccess_logger.enable && this.access_logger && this.access_logger.loginEvent(user as Partial<User>, false, enableAccess_logger.minutes, enableAccess_logger.tries);
 				throw LoginErrorCodes.EmailNotVerified;
 			}
 			else if (user[VERIFICATION_TOKEN]) { //user managed to log in even there is a waiting reset-password token for him
@@ -193,7 +193,7 @@ export class UserService {
 			roles: user.roles.map(role => role.name),
 			roleKeys: user.roles.map(role => role.roleKey)
 		}
-		if (enableAccess_logger && enableAccess_logger.enable) {
+		if (enableAccess_logger && enableAccess_logger.enable && this.access_logger) {
 			let canLogin = await this.access_logger.loginEvent(user as Partial<User>, true, enableAccess_logger.minutes, enableAccess_logger.tries);
 			if (canLogin)
 				return requestUser;

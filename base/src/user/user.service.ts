@@ -376,7 +376,7 @@ export class UserService {
 		};
 
 		for (const key in cookies) {
-			res.cookie(key, cookies[key as keyof typeof cookies], { maxAge: ttl });
+			res.cookie(key, cookies[key as keyof typeof cookies], { maxAge: ttl * 1000 });//because the TTL is in seconds, and maxAge is in miliseconds.
 		}
 
 		const body = { ...user, ...cookies };

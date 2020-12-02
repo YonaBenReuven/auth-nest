@@ -1,4 +1,4 @@
-import { Injectable, Inject, Optional } from '@nestjs/common';
+import { Injectable, Inject, Optional, ConflictException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -14,13 +14,14 @@ import { AuthConfigAccessLogger, AuthConfigAccessTokenCookie, AuthConfigAppName,
 import { RequestUserType } from '../common/interfaces/request-user-type.interface';
 import { DEFAULT_MAX_AGE, EMAIL_VERIFIED, jwtConstants, SALT, VERIFICATION_TOKEN } from '../common/constants';
 import { MailerInterface, MailAttachments } from '../mails/mailer.interface';
+import { LoginErrorCodes } from '../common/loginErrorCodes';
 import { ResetPasswordTemplate, VerifyMailTemplate } from '../mails/verifyMail.template';
 import { Role } from '../role/role.entity';
+import { AccessLoggerService } from '../access-logger/access-logger.service';
+import { UserPasswordService } from '../user-password/user-password.service';
 
 import { User } from './user.entity';
 import { UserConfig } from './user.config.interface';
-import { LoginErrorCodes } from '../common/loginErrorCodes';
-import { AccessLoggerService } from '../access-logger/access-logger.service';
 
 const debug = require('debug')('model:User');
 
@@ -36,7 +37,9 @@ export class UserService {
 		@Optional() @Inject('MailService')
 		protected readonly mailer?: MailerInterface,
 		@Optional()
-		protected readonly access_logger?: AccessLoggerService
+		protected readonly access_logger?: AccessLoggerService,
+		@Optional()
+		protected readonly userPasswordService?: UserPasswordService
 	) { }
 
 	async createUser<U extends User = User>(user: DeepPartial<U>) {
@@ -45,6 +48,10 @@ export class UserService {
 		}
 
 		const res = await this.userRepository.save(user);
+
+		if (this.config_options.useUserPassword && user.password) {
+			await this.userPasswordService.createUserPassword(res.id, (user as DeepPartial<User>).password);
+		}
 
 		if (this.config_options.emailVerification) {
 			let userAndToken = await this.generateVerificationTokenAndSave(res);
@@ -308,10 +315,26 @@ export class UserService {
 		}
 		if (this.userRepository.metadata.propertiesMap[EMAIL_VERIFIED])
 			try {
-				newPassword = bcrypt.hashSync(newPassword, SALT);
+				const hashedPassword = bcrypt.hashSync(newPassword, SALT);
+
+				let user: User;
+				if (this.config_options.useUserPassword) {
+					user = await this.userRepository
+						.createQueryBuilder('user')
+						.select('user.id')
+						.where('user.username = :email', { email })
+						.getOne();
+
+					const canChangePassword = await this.userPasswordService.checkPassword(user.id, newPassword);
+					if (!canChangePassword) return { success: false };
+				}
 
 				const updateSuccess = await this.userRepository.manager.query(
-					`UPDATE user SET password=?,${VERIFICATION_TOKEN}=null WHERE username=? AND ${VERIFICATION_TOKEN}=?`, [newPassword, email, token]);
+					`UPDATE user SET password=?,${VERIFICATION_TOKEN}=null WHERE username=? AND ${VERIFICATION_TOKEN}=?`, [hashedPassword, email, token]);
+
+				if (this.config_options.useUserPassword) {
+					await this.userPasswordService.createUserPassword(user.id, newPassword);
+				}
 
 				return updateSuccess.changedRows
 			}
@@ -362,23 +385,32 @@ export class UserService {
 	}
 
 	// With a givan userId, if oldPassword is matching, change to newPassword
-	async changePassword(userId: string | number, oldPassword: string, newPassword: string) {
+	async changePassword(userId: string, oldPassword: string, newPassword: string, checkPassword: boolean = this.config_options.useUserPassword) {
 		const user = await this.userRepository
 			.createQueryBuilder('user')
 			.addSelect('user.password')
 			.where({ id: userId })
 			.getOne();
 
-		if (!user) return `Could not find user with id ${userId}`;
-		if (!bcrypt.compareSync(oldPassword, user.password)) return 'Passwords does not match.';
-		return await this.setPassword(userId, newPassword);
+		if (!user) throw new NotFoundException('Not Found', `Could not find user with id '${userId}'`);
+
+		if (!bcrypt.compareSync(oldPassword, user.password)) throw new ConflictException('Conflict', 'Passwords do not match');
+
+		return this.setPassword(userId, newPassword, checkPassword);
 	}
 
 	// With a givan userId, change directly to newPassword (usefull for admins, for example)
-	async setPassword(userId: string | number, newPassword: string) {
-		let password = await bcrypt.hash(newPassword, SALT);
-		let updated = await this.userRepository.update(userId, { password })
-		console.log("updated", updated)
+	async setPassword(userId: string, newPassword: string, checkPassword: boolean = this.config_options.useUserPassword) {
+		if (checkPassword) {
+			const canChangePassword = await this.userPasswordService.checkPassword(userId, newPassword);
+			if (!canChangePassword) throw new ConflictException('Conflict', 'Password has already been used in past three times');
+		}
+
+		const password = await bcrypt.hash(newPassword, SALT);
+		const updated = await this.userRepository.update(userId, { password });
+
+		await this.userPasswordService.createUserPassword(userId, newPassword);
+
 		return updated;
 	}
 

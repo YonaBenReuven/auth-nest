@@ -177,12 +177,12 @@ export class UserService {
 
 
 		if (!bcrypt.compareSync(pass, user.password)) {
-			enable_access_logger && enable_access_logger.enable && this.accessLoggerService && this.accessLoggerService.loginEvent(user as Partial<User>, false, enable_access_logger.minutes, enable_access_logger.tries);
+			enable_access_logger && enable_access_logger.enable && this.accessLoggerService && this.accessLoggerService.loginEvent(user as Partial<User>, false);
 			throw LoginErrorCodes.PassDosentMatch;
 		}
 		if (this.config_options.emailVerification)//user didnt verified his email
 			if (!user.emailVerified) {
-				enable_access_logger && enable_access_logger.enable && this.accessLoggerService && this.accessLoggerService.loginEvent(user as Partial<User>, false, enable_access_logger.minutes, enable_access_logger.tries);
+				enable_access_logger && enable_access_logger.enable && this.accessLoggerService && this.accessLoggerService.loginEvent(user as Partial<User>, false);
 				throw LoginErrorCodes.EmailNotVerified;
 			}
 			else if (user[VERIFICATION_TOKEN]) { //user managed to log in even there is a waiting reset-password token for him
@@ -196,7 +196,7 @@ export class UserService {
 			}
 
 		if (enable_access_logger && enable_access_logger.enable && this.accessLoggerService) {
-			this.accessLoggerService.loginEvent(user as Partial<User>, true, enable_access_logger.minutes, enable_access_logger.tries);
+			this.accessLoggerService.loginEvent(user as Partial<User>, true);
 		}
 
 		const requestUser: RequestUserType = {

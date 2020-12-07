@@ -11,7 +11,7 @@ export class AccessLoggerService {
         private readonly accessLoggerRepository: Repository<AccessLogger>) { }
 
 
-    async loginEvent(user: Partial<User>, success: boolean, minutes: number, tries: number) {
+    async loginEvent(user: Partial<User>, success: boolean) {
         const date = new Date();
 
         if (!success) {

@@ -37,10 +37,12 @@ export class UserService {
 		@Optional() @Inject('MailService')
 		protected readonly mailer?: MailerInterface,
 		@Optional()
-		protected readonly access_logger?: AccessLoggerService,
+		protected readonly accessLoggerService?: AccessLoggerService,
 		@Optional()
 		protected readonly userPasswordService?: UserPasswordService
-	) { }
+	) {
+		debug("init", this.userRepository.metadata.name);
+	}
 
 	async createUser<U extends User = User>(user: DeepPartial<U>) {
 		if (!(user instanceof User)) { // The hash function does not apply for objects that r not User instances. 
@@ -161,20 +163,26 @@ export class UserService {
 		if (!user)
 			throw LoginErrorCodes.NoUsername;
 
+		const enable_access_logger = this.configService.get<AuthConfigAccessLogger>('auth.access_logger');
+
+		if (enable_access_logger && enable_access_logger.enable) {
+			let canLogin = await this.accessLoggerService.canLogin(user.id, enable_access_logger.minutes, enable_access_logger.tries);
+			if (!canLogin)
+				throw LoginErrorCodes.UserBlocked;
+		}
+
 		if (!user.password) {
 			throw LoginErrorCodes.UserHasNoPassword;
 		}
 
-		const enableAccess_logger = this.configService.get<AuthConfigAccessLogger>('auth.access_logger');
-
 
 		if (!bcrypt.compareSync(pass, user.password)) {
-			enableAccess_logger && enableAccess_logger.enable && this.access_logger && this.access_logger.loginEvent(user as Partial<User>, false, enableAccess_logger.minutes, enableAccess_logger.tries);
+			enable_access_logger && enable_access_logger.enable && this.accessLoggerService && this.accessLoggerService.loginEvent(user as Partial<User>, false, enable_access_logger.minutes, enable_access_logger.tries);
 			throw LoginErrorCodes.PassDosentMatch;
 		}
 		if (this.config_options.emailVerification)//user didnt verified his email
 			if (!user.emailVerified) {
-				enableAccess_logger && enableAccess_logger.enable && this.access_logger && this.access_logger.loginEvent(user as Partial<User>, false, enableAccess_logger.minutes, enableAccess_logger.tries);
+				enable_access_logger && enable_access_logger.enable && this.accessLoggerService && this.accessLoggerService.loginEvent(user as Partial<User>, false, enable_access_logger.minutes, enable_access_logger.tries);
 				throw LoginErrorCodes.EmailNotVerified;
 			}
 			else if (user[VERIFICATION_TOKEN]) { //user managed to log in even there is a waiting reset-password token for him
@@ -186,6 +194,11 @@ export class UserService {
 					console.error("Could not update verification token in validateUser:", error);
 				}
 			}
+
+		if (enable_access_logger && enable_access_logger.enable && this.accessLoggerService) {
+			this.accessLoggerService.loginEvent(user as Partial<User>, true, enable_access_logger.minutes, enable_access_logger.tries);
+		}
+
 		const requestUser: RequestUserType = {
 			id: user.id,
 			username: user.username,
@@ -193,14 +206,8 @@ export class UserService {
 			roles: user.roles.map(role => role.name),
 			roleKeys: user.roles.map(role => role.roleKey)
 		}
-		if (enableAccess_logger && enableAccess_logger.enable && this.access_logger) {
-			let canLogin = await this.access_logger.loginEvent(user as Partial<User>, true, enableAccess_logger.minutes, enableAccess_logger.tries);
-			if (canLogin)
-				return requestUser;
-			else throw LoginErrorCodes.UserBlocked;
-		}
-		else
-			return requestUser;
+
+		return requestUser;
 
 	}
 

@@ -10,7 +10,27 @@ export class AccessLoggerService {
         @InjectRepository(AccessLogger)
         private readonly accessLoggerRepository: Repository<AccessLogger>) { }
 
+
     async loginEvent(user: Partial<User>, success: boolean, minutes: number, tries: number) {
+        const date = new Date();
+
+        if (!success) {
+            await this.saveEvent(user, success, date);
+            return false;
+        }
+        else {
+            await this.accessLoggerRepository
+                .createQueryBuilder('access_logger')
+                .delete()
+                .where(`userId = '${user.id}'`)
+                .execute();
+            await this.saveEvent(user, success, date);
+            return true;
+        }
+
+    }
+
+    async canLogin(userId: string | number, minutes: number, tries: number) {
         const date = new Date();
         const minDate = new Date(date.getTime() - minutes * 60000);
 
@@ -25,22 +45,9 @@ export class AccessLoggerService {
 
         const loginCountsFailed = await this.accessLoggerRepository
             .createQueryBuilder('access_logger')
-            .where(`date >= '${formatMinDate.toString()}' and userId = '${user.id}' and success = false`)
+            .where(`date >= '${formatMinDate.toString()}' and userId = '${userId}' and success = false`)
             .getCount();
-        if (loginCountsFailed >= tries || !success) {
-            await this.saveEvent(user, success, date);
-            return false;
-        }
-        else {
-            await this.accessLoggerRepository
-                .createQueryBuilder('access_logger')
-                .delete()
-                .where(`userId = '${user.id}'`)
-                .execute();
-            await this.saveEvent(user, success, date);
-            return true;
-        }
-
+        return loginCountsFailed < tries;
 
     }
 

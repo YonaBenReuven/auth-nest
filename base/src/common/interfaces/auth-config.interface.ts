@@ -32,7 +32,9 @@ export interface AuthConfig {
 
 		secretOrKey?: string;
 
-		accessToken_cookie?: string
+		accessToken_cookie?: string;
+
+		retrieve_all_userData?: boolean;
 	};
 
 	app_name?: string;

@@ -7,6 +7,7 @@ export interface UserConfig {
 	providers?: Provider<any>[];
 	set_access_logger?: Boolean;
 	useUserPassword?: boolean;
+	extra_login_fields?: string[];
 }
 
 enum LoginType { Email, Username, Phone, TwoFactorAuthentication }

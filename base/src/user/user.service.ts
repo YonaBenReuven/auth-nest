@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
-import { Repository, DeepPartial } from 'typeorm';
+import { Repository, DeepPartial, SelectQueryBuilder } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import * as base64 from 'base-64';
 import * as randomstring from 'randomstring';
@@ -150,15 +150,19 @@ export class UserService {
 	 * Otherwise, i.e. if the username doesn't exits or the password is incorrect, null is returned
 	 */
 	async validateUser(username: string, pass: string) {
-		const user: any = await this.userRepository
+		const queryBuilder = this.userRepository
 			.createQueryBuilder('user')
 			.addSelect('user.password')
 			.addSelect('user.type')
 			.addSelect(this.config_options.emailVerification ? 'user.emailVerified' : '')
 			.addSelect(this.config_options.emailVerification ? `user.${VERIFICATION_TOKEN}` : '')
 			.leftJoinAndSelect('user.roles', 'role')
-			.where({ username })
-			.getOne();
+			.where({ username });
+
+		const retrieve = this.configService.get<boolean>('auth.retrieve_all_userData');
+
+		const extraFieldsQueryBuilder = this.createValidateUserQueryBuilder(queryBuilder, retrieve ? this.config_options.extra_login_fields : []);
+		const user: any = await extraFieldsQueryBuilder.getOne();
 
 		if (!user)
 			throw LoginErrorCodes.NoUsername;
@@ -199,7 +203,10 @@ export class UserService {
 			this.accessLoggerService.loginEvent(user as Partial<User>, true);
 		}
 
+		const allUserData = retrieve ? user : {};
+
 		const requestUser: RequestUserType = {
+			...allUserData,
 			id: user.id,
 			username: user.username,
 			type: user.type,
@@ -490,6 +497,16 @@ export class UserService {
 		return randomstring.generate({
 			length: Math.floor(Math.random() * (1 + longLength - shortLength)) + shortLength + Math.floor(Math.random() * 21) - 10
 		});
+	}
+
+	private createValidateUserQueryBuilder(queryBuilder: SelectQueryBuilder<User>, fields: string[] = []): SelectQueryBuilder<User> {
+		if (fields.length === 0) return queryBuilder;
+
+		const [field, ...rest] = fields;
+
+		const fieldQueryBuilder = queryBuilder.addSelect(`user.${field}`);
+
+		return this.createValidateUserQueryBuilder(fieldQueryBuilder, rest);
 	}
 }
 

@@ -161,7 +161,7 @@ export class UserService {
 
 		const retrieve = this.configService.get<boolean>('auth.retrieve_all_userData');
 
-		const extraFieldsQueryBuilder = this.createValidateUserQueryBuilder(queryBuilder, retrieve ? this.config_options.extra_login_fields : []);
+		const extraFieldsQueryBuilder = this.createValidateUserQueryBuilder(queryBuilder, retrieve ? [] : this.config_options.extra_login_fields);
 		const user: any = await extraFieldsQueryBuilder.getOne();
 
 		if (!user)
@@ -377,7 +377,21 @@ export class UserService {
 
 		const klos = this.getKlos(user.roles, user.roleKeys);
 
-		const accessToken = this.jwtService.sign(user, {
+		const requestUser: RequestUserType & Record<string, any> = {
+			id: user.id,
+			username: user.username,
+			type: user.type,
+			roles: user.roles,
+			roleKeys: user.roleKeys
+		}
+
+		const extra_login_fields = this.config_options.extra_login_fields || [];
+
+		extra_login_fields.forEach(field => {
+			requestUser[field] = user[field];
+		});
+
+		const accessToken = this.jwtService.sign(requestUser, {
 			expiresIn: ttl,
 			secret: this.configService.get<AuthConfigSecretOrKey>('auth.secretOrKey') ?? jwtConstants.secret
 		});

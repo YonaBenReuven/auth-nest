@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { MoreThan, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 
 import { UserPassword } from './user-password.entity';
+const debug = require('debug')("model:UserPasswords")
 
 @Injectable()
 export class UserPasswordService {
@@ -27,6 +28,24 @@ export class UserPasswordService {
 		}
 
 		return true;
+	}
+
+
+	/**
+	 * Checks if a year have pass since the last time the user changed his password.
+	 */
+	async changePasswordRequired(userId: string | number) {
+		let date = new Date();
+		date.setFullYear(date.getFullYear() - 1);
+		let res = await this.userPasswordRepository.findOne({
+			where: {
+				created: MoreThan(date),
+				user: { id: userId }
+			}
+		})
+		debug('find password res:', res)
+		return res ? false : true;//if there is a change-password record from the passed year, the user don't need to change.
+
 	}
 
 	createUserPassword(userId: string, password: string) {

@@ -16,7 +16,7 @@ export { UseAuthGuard } from './common/interfaces/use-auth-guard.interface';
 export { AuthConfig, AuthConfigSecretOrKey, AuthConfigAccessTokenCookie, AuthConfigAppName, AuthConfigAppNameHe, AuthConfigRoleAccess, AuthConfigTtl, AuthConfigVerificationEmail } from './common/interfaces/auth-config.interface';
 export { JwtStrategy } from './common/strategies/jwt.strategy';
 export { LocalStrategy } from './common/strategies/local.strategy';
-export { SALT, USER_MODULE_OPTIONS, jwtConstants } from './common/constants';
+export { SALT, USER_MODULE_OPTIONS, jwtConstants, EMAIL_VERIFIED, VERIFICATION_TOKEN } from './common/constants';
 export { Role } from './role/role.entity';
 export { RoleModule } from './role/role.module';
 export { RoleService } from './role/role.service';
@@ -30,3 +30,4 @@ export { NodeMailerModule } from './mails/MailModule';
 export { VerifyMailTemplate, ResetPasswordTemplate } from './mails/verifyMail.template';
 export { LoginErrorCodes } from './common/loginErrorCodes';
 export { AccessLogger, AccessLoggerModule, AccessLoggerService } from './access-logger'
+export { UserPasswordModule, UserPassword, UserPasswordService } from './user-password'

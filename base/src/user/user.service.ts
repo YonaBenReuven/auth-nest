@@ -149,7 +149,7 @@ export class UserService {
 	 * @returns If the user's username exists and the password is correct a response is returned consisting of the user's id, username, type, and roles
 	 * Otherwise, i.e. if the username doesn't exits or the password is incorrect, null is returned
 	 */
-	async validateUser(username: string, pass: string) {
+	async validateUser(username: string, pass: string, comparePassword = true) {
 		const queryBuilder = this.userRepository
 			.createQueryBuilder('user')
 			.addSelect('user.password')
@@ -162,7 +162,7 @@ export class UserService {
 		const retrieve = this.configService.get<boolean>('auth.retrieve_all_userData');
 
 		const extraFieldsQueryBuilder = this.createValidateUserQueryBuilder(queryBuilder, retrieve ? [] : this.config_options.extra_login_fields);
-		const user: any = await extraFieldsQueryBuilder.getOne();
+		const user = await extraFieldsQueryBuilder.getOne();
 
 		if (!user)
 			throw LoginErrorCodes.NoUsername;
@@ -179,13 +179,12 @@ export class UserService {
 			throw LoginErrorCodes.UserHasNoPassword;
 		}
 
-
-		if (!bcrypt.compareSync(pass, user.password)) {
+		if (!bcrypt.compareSync(pass, user.password) && comparePassword) {
 			enable_access_logger && enable_access_logger.enable && this.accessLoggerService && this.accessLoggerService.loginEvent(user as Partial<User>, false);
 			throw LoginErrorCodes.PassDosentMatch;
 		}
 		if (this.config_options.emailVerification)//user didnt verified his email
-			if (!user.emailVerified) {
+			if (!(user as any).emailVerified) {
 				enable_access_logger && enable_access_logger.enable && this.accessLoggerService && this.accessLoggerService.loginEvent(user as Partial<User>, false);
 				throw LoginErrorCodes.EmailNotVerified;
 			}

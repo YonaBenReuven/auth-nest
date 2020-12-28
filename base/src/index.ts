@@ -1,3 +1,14 @@
+export { KnowledgeStrategy } from './common/strategies/knowledge.strategy';
+export { PossessionStrategy } from './common/strategies/possession.strategy';
+export { TwoFactor } from './two-factor/two-factor.entity';
+export { TwoFactorModule } from './two-factor/two-factor.module';
+export { TwoFactorService } from './two-factor/two-factor.service';
+export { UseKnowledgeAuth } from './common/decorators/use-knowledge-auth.decorator';
+export { UsePossessionAuth } from './common/decorators/use-possession-auth.decorator';
+export { KnowledgeAuthGuard } from './common/guards/knowledge-auth.guard';
+export { PossessionAuthGuard } from './common/guards/possession-auth.guard';
+export { TwoFactorOptions } from './common/interfaces/two-factor-options.interface';
+export { ACCESS_TOKEN, defaultTwoFactorOptions, TWO_FACTOR_OPTIONS, TWO_FACTOR_TOKEN } from './common/constants';
 export { UseJwtInterceptor } from './common/decorators/use-jwt-interceptor.decorator';
 export { JwtAuthInterceptor } from './common/interceptors/jwt-auth.interceptor';
 export { Entities } from './common/decorators/entities.decorator';
@@ -29,4 +40,4 @@ export { NodeMailerService } from './mails/MailService';
 export { NodeMailerModule } from './mails/MailModule';
 export { VerifyMailTemplate, ResetPasswordTemplate } from './mails/verifyMail.template';
 export { LoginErrorCodes } from './common/loginErrorCodes';
-export { AccessLogger, AccessLoggerModule, AccessLoggerService } from './access-logger'
+export { AccessLogger, AccessLoggerModule, AccessLoggerService } from './access-logger';

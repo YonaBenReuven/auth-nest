@@ -32,7 +32,11 @@ export interface AuthConfig {
 
 		secretOrKey?: string;
 
+		twoFactorSecretOrKey?: string;
+
 		accessToken_cookie?: string;
+
+		twoFactorToken_cookie?: string;
 
 		retrieve_all_userData?: boolean;
 	};
@@ -57,7 +61,11 @@ export type AuthConfigResetPasswordEmail = AuthConfig['auth']['reset_password_em
 
 export type AuthConfigSecretOrKey = AuthConfig['auth']['secretOrKey'];
 
+export type AuthConfigTwoFactorSecretOrKey = AuthConfig['auth']['twoFactorSecretOrKey'];
+
 export type AuthConfigAccessTokenCookie = AuthConfig['auth']['accessToken_cookie'];
+
+export type AuthConfigTwoFactorTokenCookie = AuthConfig['auth']['twoFactorToken_cookie'];
 
 export type AuthConfigAppName = AuthConfig['app_name'];
 

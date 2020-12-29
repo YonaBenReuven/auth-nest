@@ -1,8 +1,8 @@
 import { BeforeInsert, Column, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 
-import { User } from 'src/user/user.entity';
-import { SALT } from 'src/common/constants';
+import { User } from '../user/user.entity';
+import { SALT } from '../common/constants';
 
 @Entity('two_factor')
 export class TwoFactor {

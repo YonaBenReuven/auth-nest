@@ -27,7 +27,7 @@ import { TwoFactorService } from './two-factor.service';
 			useValue: defaultTwoFactorOptions
 		}
 	],
-	exports: [JwtModule.register({})]
+	exports: [JwtModule.register({}), TwoFactorService]
 })
 export class TwoFactorModule {
 	static register(options: TwoFactorOptions = {}): DynamicModule {

@@ -7,7 +7,7 @@ import { Strategy } from 'passport-jwt';
 import { UserService } from '../../user/user.service';
 import { TwoFactorService } from '../../two-factor/two-factor.service';
 
-import { jwtConstants, TWO_FACTOR_OPTIONS, TWO_FACTOR_TOKEN } from '../constants';
+import { jwtConstants, TWO_FACTOR_TOKEN } from '../constants';
 import { AuthConfigTwoFactorTokenCookie, AuthConfigTwoFactorSecretOrKey } from '../interfaces/auth-config.interface';
 import { RequestUserType } from '../interfaces/request-user-type.interface';
 import { LoginErrorCodes } from '../loginErrorCodes';
@@ -16,7 +16,6 @@ import { LoginErrorCodes } from '../loginErrorCodes';
 export class PossessionStrategy extends PassportStrategy(Strategy, 'possession') {
 	constructor(
 		private readonly configService: ConfigService,
-		@Inject(TWO_FACTOR_OPTIONS)
 		private readonly twoFactorService: TwoFactorService,
 		private readonly userService: UserService
 	) {

@@ -1,6 +1,6 @@
 {
   "name": "@hilma/auth-nest",
-  "version": "0.1.44",
+  "version": "0.1.46",
   "license": "MIT",
   "main": "dist/index.js",
   "files": [

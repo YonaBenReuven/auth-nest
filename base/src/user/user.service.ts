@@ -154,7 +154,7 @@ export class UserService {
 			.createQueryBuilder('user')
 			.addSelect('user.password')
 			.addSelect('user.type')
-			.addSelect(this.config_options.emailVerification ? 'user.emailVerified' : '')
+			.addSelect(this.config_options.emailVerification ? `user.${EMAIL_VERIFIED}` : '')
 			.addSelect(this.config_options.emailVerification ? `user.${VERIFICATION_TOKEN}` : '')
 			.leftJoinAndSelect('user.roles', 'role')
 			.where({ username });
@@ -179,24 +179,30 @@ export class UserService {
 			throw LoginErrorCodes.UserHasNoPassword;
 		}
 
-		if (!bcrypt.compareSync(pass, user.password) && comparePassword) {
+		if (comparePassword && !bcrypt.compareSync(pass, user.password)) {
 			enable_access_logger && enable_access_logger.enable && this.accessLoggerService && this.accessLoggerService.loginEvent(user as Partial<User>, false);
 			throw LoginErrorCodes.PassDosentMatch;
 		}
 		if (this.config_options.emailVerification)//user didnt verified his email
-			if (!(user as any).emailVerified) {
+			if (!user[EMAIL_VERIFIED]) {
 				enable_access_logger && enable_access_logger.enable && this.accessLoggerService && this.accessLoggerService.loginEvent(user as Partial<User>, false);
 				throw LoginErrorCodes.EmailNotVerified;
 			}
 			else if (user[VERIFICATION_TOKEN]) { //user managed to log in even there is a waiting reset-password token for him
 				try {
-					await this.userRepository.manager.query(
-						`UPDATE user SET ${VERIFICATION_TOKEN}=null WHERE id=?`, [user.id]);
+					await this.userRepository.update(user.id, { [VERIFICATION_TOKEN]: null } as Partial<User>);
 				}
 				catch (error) {
 					console.error("Could not update verification token in validateUser:", error);
 				}
 			}
+
+
+		if (this.config_options.useUserPassword && this.config_options.force_change_password_year) {
+			const shouldChangePass = await this.userPasswordService.changePasswordRequired(user.id);
+			if (shouldChangePass)
+				throw LoginErrorCodes.UserMustChangePassword;
+		}
 
 		if (enable_access_logger && enable_access_logger.enable && this.accessLoggerService) {
 			this.accessLoggerService.loginEvent(user as Partial<User>, true);
@@ -221,10 +227,11 @@ export class UserService {
 		if (this.config_options.emailVerification)
 			if (this.userRepository.metadata.propertiesMap[EMAIL_VERIFIED])
 				try {
-					const verificationSuccess = await this.userRepository.manager.query(
-						`UPDATE user SET ${EMAIL_VERIFIED}=1,${VERIFICATION_TOKEN}=null WHERE ${VERIFICATION_TOKEN}=?`, [token]);
-
-					return verificationSuccess.changedRows
+					const verificationSuccess = await this.userRepository.update(
+						{ [VERIFICATION_TOKEN]: token } as Partial<User>,
+						{ [EMAIL_VERIFIED]: 1, [VERIFICATION_TOKEN]: null } as Partial<User>
+					);
+					return verificationSuccess.affected ? true : false;
 				}
 				catch (err) {
 					console.error("Error while verify email: %s", err);
@@ -287,12 +294,12 @@ export class UserService {
 	async generateVerificationTokenAndSave(user: DeepPartial<User>) {
 		try {
 			let token = this.generateVerificationToken();
-			const updateSuccess = await this.userRepository.manager.query(
-				`UPDATE user SET ${VERIFICATION_TOKEN}=? WHERE id=?`, [token, user.id]);
+			await this.userRepository.update(user.id ?? { username: user.username }, { [VERIFICATION_TOKEN]: token } as Partial<User>);
 
 			return { ...user, [VERIFICATION_TOKEN]: token }
 		} catch (err) {
-
+			console.error("Error in generateVerificationTokenAndSave:", err);
+			throw "Could not generate token";
 		}
 	}
 
@@ -342,14 +349,15 @@ export class UserService {
 					if (!canChangePassword) return { success: false };
 				}
 
-				const updateSuccess = await this.userRepository.manager.query(
-					`UPDATE user SET password=?,${VERIFICATION_TOKEN}=null WHERE username=? AND ${VERIFICATION_TOKEN}=?`, [hashedPassword, email, token]);
+				const updateSuccess = await this.userRepository.update(
+					{ username: email, [VERIFICATION_TOKEN]: token } as Partial<User>,
+					{ password: newPassword });
 
 				if (this.config_options.useUserPassword) {
 					await this.userPasswordService.createUserPassword(user.id, newPassword);
 				}
 
-				return updateSuccess.changedRows
+				return updateSuccess.affected ? true : false;
 			}
 			catch (err) {
 				console.error("Error while change password with token email: %s", err);

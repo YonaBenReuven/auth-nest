@@ -1,4 +1,4 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
@@ -12,10 +12,11 @@ import { AuthConfigTwoFactorSecretOrKey, AuthConfigTwoFactorTokenCookie } from '
 import { jwtConstants, SALT, TWO_FACTOR_OPTIONS, TWO_FACTOR_TOKEN } from '../common/constants';
 import { TwoFactorOptions } from '../common/interfaces/two-factor-options.interface';
 import { RequestUserType } from '../common/interfaces/request-user-type.interface';
+import { SendCodeOptions } from '../common/interfaces/send-code-options.interface';
+import { LoginErrorCodes } from '../common/loginErrorCodes';
 import { User } from '../user/user.entity';
 
 import { TwoFactor } from './two-factor.entity';
-import { LoginErrorCodes } from 'src/common/loginErrorCodes';
 
 @Injectable()
 export class TwoFactorService {
@@ -168,7 +169,7 @@ export class TwoFactorService {
 			.where('twoFactor.userId = :userId', { userId })
 			.getOne();
 
-		twoFactor ??= await this.twoFactorRepository.save(this.twoFactorRepository.create({ userId }));
+		twoFactor = twoFactor ?? await this.twoFactorRepository.save(this.twoFactorRepository.create({ userId }));
 
 		const isBlocked = this.isBlocked(twoFactor.userBlockedDate);
 
@@ -187,41 +188,51 @@ export class TwoFactorService {
 	 * Function that sends a code to a user
 	 * @param user The request user
 	 * @param res The express res object
-	 * @param sendInDevelopment Should send sms in development (default to twoFactorOptions)
-	 * @param sendInProduction Should send sms in production (default to twoFactorOptions)
-	 * @param SMSGenerator Function that generates an SMS message (default to `קוד האימות הוא: ${code}`)
-	 * @param code The code to send to the user
+	 * @param options Options for sending the SMS
 	 */
-	async sendCode(
-		user: RequestUserType,
-		res: Response,
-		sendInDevelopment = this.twoFactorOptions.sendInProduction,
-		sendInProduction = this.twoFactorOptions.sendInProduction,
-		SMSGenerator = this.SMSGenerator,
-		code = this.createCode()
-	) {
+	async sendCode(user: RequestUserType, res: Response, options: SendCodeOptions = {}) {
+		const defaultOptions: Required<SendCodeOptions> = {
+			sendInDevelopment: this.twoFactorOptions.sendInDevelopment,
+			sendInProduction: this.twoFactorOptions.sendInProduction,
+			SMSGenerator: this.SMSGenerator,
+			code: this.createCode(),
+			logCode: false,
+			logSMS: false
+		}
+
+		const sendCodeOptions: Required<SendCodeOptions> = { ...defaultOptions, ...options };
+
 		let phone = user[this.twoFactorOptions.phoneField];
 
 		if (!phone) {
-			const { [this.twoFactorOptions.phoneField as keyof User]: phoneValue } = await this.userRepository
+			const [query, parameters] = this.userRepository
 				.createQueryBuilder('user')
-				.select([`user.${this.twoFactorOptions.phoneField}`])
+				.select([`user.${this.twoFactorOptions.phoneField} AS phoneValue`])
 				.whereInIds([user.id])
-				.getOne();
+				.getQueryAndParameters();
+
+			const [{ phoneValue }] = await this.userRepository.query(query, parameters);
 
 			phone = phoneValue;
 		}
 
+		if (!phone) throw new InternalServerErrorException('No phone number');
+
+		const SMSText = sendCodeOptions.SMSGenerator(sendCodeOptions.code);
+
+		if (sendCodeOptions.logCode) console.log('Code: ', sendCodeOptions.code);
+		if (sendCodeOptions.logSMS) console.log('SMS: ', SMSText);
+
 		const NODE_ENV = process.env.NODE_ENV || 'development';
 
 		if (
-			(NODE_ENV === 'production' && sendInProduction) ||
-			(NODE_ENV !== 'production' && sendInDevelopment)
+			(NODE_ENV === 'production' && sendCodeOptions.sendInProduction) ||
+			(NODE_ENV !== 'production' && sendCodeOptions.sendInDevelopment)
 		) {
-			await this.sendSMS(phone, SMSGenerator(code), this.twoFactorOptions.SMSSender);
+			await this.sendSMS(phone, SMSText, this.twoFactorOptions.SMSSender);
 		}
 
-		const hashedCode = await bcrypt.hash(code, SALT);
+		const hashedCode = await bcrypt.hash(sendCodeOptions.code, SALT);
 
 		await this.twoFactorRepository
 			.createQueryBuilder('twoFactor')
@@ -231,7 +242,7 @@ export class TwoFactorService {
 				code: hashedCode,
 				codeCreatedDate: new Date(),
 			})
-			.where('twoFactor.userId = :userId', { userId: user.id })
+			.where({ userId: user.id })
 			.execute();
 
 		const requestUser: RequestUserType = {
@@ -257,6 +268,11 @@ export class TwoFactorService {
 
 		return body;
 	}
+	/**
+	 * Validates a user's code sent by SMS
+	 * @param userId The user's id
+	 * @param code The user's code
+	 */
 	async validateCode(userId: string, code: string) {
 		const twoFactor = await this.twoFactorRepository
 			.createQueryBuilder('twoFactor')

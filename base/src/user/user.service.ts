@@ -455,8 +455,10 @@ export class UserService {
 			debug("User tried to force login:", user);
 			return {}
 		}
-		let userInst = await this.userRepository.findOne(
-			{ where: { username: user[field] }, relations: ["roles"] });
+		let userInst = await this.userRepository.createQueryBuilder('user')
+			.addSelect('user.type')
+			.leftJoinAndSelect('user.roles', 'role')
+			.where({ username: user[field] }).getOne();
 		if (userInst) {
 			debug('Logged using forced login:', userInst)//WE DONT CARE HOW DID YOU LOGGED IN
 
@@ -485,8 +487,10 @@ export class UserService {
 			debug("User tried to force login:", user);
 			return {}
 		}
-		let userInst = await this.userRepository.findOne(
-			{ where: { username: user[uniqeField] }, relations: ["roles"] });
+		let userInst = await this.userRepository.createQueryBuilder('user')
+			.addSelect('user.type')
+			.leftJoinAndSelect('user.roles', 'role')
+			.where({ username: user[uniqeField] }).getOne();
 		if (userInst) {
 			let haveChange = false;
 

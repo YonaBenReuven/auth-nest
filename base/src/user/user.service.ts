@@ -344,14 +344,18 @@ export class UserService {
 						.select('user.id')
 						.where('user.username = :email', { email })
 						.getOne();
-
+					if (!user)
+						throw "No user matching this username:" + email;
 					const canChangePassword = await this.userPasswordService.checkPassword(user.id, newPassword);
-					if (!canChangePassword) return { success: false };
+					if (!canChangePassword) {
+						debug("Password already used")
+						return { success: false };
+					}
 				}
 
 				const updateSuccess = await this.userRepository.update(
 					{ username: email, [VERIFICATION_TOKEN]: token } as Partial<User>,
-					{ password: newPassword });
+					{ password: hashedPassword, [VERIFICATION_TOKEN]: null } as Partial<User>);
 
 				if (this.config_options.useUserPassword) {
 					await this.userPasswordService.createUserPassword(user.id, newPassword);

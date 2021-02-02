@@ -474,7 +474,7 @@ export class UserService {
 			let newUser = { ...user, username: user[field], password: null, [EMAIL_VERIFIED]: 1, roles: roles || [] }
 			newUser = await this.userRepository.save(newUser);
 			debug("New user instance: ", newUser);
-			return this.login({ ...newUser, roles: newUser.roles.map(role => role.name) }, res);
+			return this.login({ ...newUser, roles: newUser.roles.map(role => role.name), type: this.userRepository.metadata.name }, res);
 		}
 	}
 
@@ -511,7 +511,7 @@ export class UserService {
 			let newUser = { ...user, username: user[uniqeField], password: null, [EMAIL_VERIFIED]: 1, roles: roles || [] }
 			newUser = await this.userRepository.save(newUser);
 			debug("New user instance: ", newUser);
-			return this.login({ ...newUser, roles: roles.map(role => role.name), roleKeys: roles.map(role => role.roleKey) }, res);
+			return this.login({ ...newUser, roles: roles.map(role => role.name), roleKeys: roles.map(role => role.roleKey), type: this.userRepository.metadata.name }, res);
 		}
 	}
 

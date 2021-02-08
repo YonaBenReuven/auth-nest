@@ -36,6 +36,8 @@ export interface AuthConfig {
 
 		accessToken_cookie?: string;
 
+		allow_accessToken_query?: boolean;
+
 		twoFactorToken_cookie?: string;
 
 		retrieve_all_userData?: boolean;
@@ -64,6 +66,8 @@ export type AuthConfigSecretOrKey = AuthConfig['auth']['secretOrKey'];
 export type AuthConfigTwoFactorSecretOrKey = AuthConfig['auth']['twoFactorSecretOrKey'];
 
 export type AuthConfigAccessTokenCookie = AuthConfig['auth']['accessToken_cookie'];
+
+export type AuthConfigQueryAccessToken = AuthConfig['auth']['allow_accessToken_query'];
 
 export type AuthConfigTwoFactorTokenCookie = AuthConfig['auth']['twoFactorToken_cookie'];
 

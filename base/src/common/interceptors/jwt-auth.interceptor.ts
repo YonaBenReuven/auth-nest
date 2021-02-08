@@ -6,7 +6,7 @@ import { Observable } from 'rxjs';
 
 import { jwtConstants } from '../constants';
 import { extractTokenFromCookie } from '../functions/extract-token-from-cookie.function';
-import { AuthConfigAccessTokenCookie, AuthConfigSecretOrKey } from '../interfaces/auth-config.interface';
+import { AuthConfigAccessTokenCookie, AuthConfigQueryAccessToken, AuthConfigSecretOrKey } from '../interfaces/auth-config.interface';
 
 @Injectable()
 export class JwtAuthInterceptor implements NestInterceptor {
@@ -19,7 +19,10 @@ export class JwtAuthInterceptor implements NestInterceptor {
 		const ctx = context.switchToHttp();
 		const req = ctx.getRequest<Request>();
 
-		const token = extractTokenFromCookie(this.configService.get<AuthConfigAccessTokenCookie>('auth.accessToken_cookie') ?? 'access_token')(req);
+		const token = extractTokenFromCookie(
+			this.configService.get<AuthConfigAccessTokenCookie>('auth.accessToken_cookie') ?? 'access_token',
+			this.configService.get<AuthConfigQueryAccessToken>('auth.allow_accessToken_query') ?? false
+		)(req);
 
 		try {
 			const user = this.jwtService.verify(token, { secret: this.configService.get<AuthConfigSecretOrKey>('auth.secretOrKey') ?? jwtConstants.secret });

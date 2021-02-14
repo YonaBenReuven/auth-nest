@@ -17,12 +17,17 @@ import { LoginErrorCodes } from '../common/loginErrorCodes';
 import { User } from '../user/user.entity';
 
 import { TwoFactor } from './two-factor.entity';
+import { readFileSync } from 'fs';
+import { config } from 'dotenv';
+config();
 
 @Injectable()
 export class TwoFactorService {
 	private twoFactorSecretOrKey: string;
 
 	private twoFactorTokenCookie: string;
+
+	private smsPassword: string;
 
 	constructor(
 		@Inject(TWO_FACTOR_OPTIONS)
@@ -36,6 +41,15 @@ export class TwoFactorService {
 	) {
 		this.twoFactorSecretOrKey = this.configService.get<AuthConfigTwoFactorSecretOrKey>('auth.twoFactorSecretOrKey') ?? jwtConstants.twoFactorSecret;
 		this.twoFactorTokenCookie = this.configService.get<AuthConfigTwoFactorTokenCookie>('auth.twoFactorToken_cookie') ?? TWO_FACTOR_TOKEN;
+		try {
+			if (!process.env.PASS019)
+				throw "SET ENV PASS019";
+			this.smsPassword = readFileSync(process.env.PASS019, 'utf-8');
+		} catch (err) {
+			console.error("Error on readfilesync for password:    ", err);
+			throw "No file or env path for 019.txt";
+		}
+
 	}
 	/**
 	 * 
@@ -49,7 +63,7 @@ export class TwoFactorService {
 		return new Promise<any>((resolve, reject) => {
 			const encodedText = encodeURIComponent(text);
 
-			const data = `<?xml version="1.0" encoding="UTF-8"?><sms><user><username>Fb9KF2fX</username><password>RX70n5eE</password></user><source>${senderName}</source><destinations><phone>${phone}</phone></destinations><message>${encodedText}</message><response>0</response></sms>`;
+			const data = `<?xml version="1.0" encoding="UTF-8"?><sms><user><username>Fb9KF2fX</username><password>${this.smsPassword}</password></user><source>${senderName}</source><destinations><phone>${phone}</phone></destinations><message>${encodedText}</message><response>0</response></sms>`;
 
 			const options = {
 				hostname: 'www.019sms.co.il',

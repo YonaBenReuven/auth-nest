@@ -2,7 +2,7 @@ import { Injectable, Inject, Optional, ConflictException, NotFoundException } fr
 import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { Response } from 'express';
+import { CookieOptions, Response } from 'express';
 import { Repository, DeepPartial, SelectQueryBuilder } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import * as base64 from 'base-64';
@@ -381,7 +381,7 @@ export class UserService {
 	 * @param ttl The expiration of the cookies and access token in ms. default to the ttl in `configuration.ts` or 5 hours
 	 * @returns A login response consisting of the user request and the cookies that are attached to the response object
 	 */
-	login(user: RequestUserType, res: Response, ttl?: number) {
+	login(user: RequestUserType, res: Response, ttl?: number, cookies_options?: CookieOptions) {
 		ttl = ttl ?? this.configService.get<AuthConfigTtl[keyof AuthConfigTtl]>(`auth.ttl.${user.type}`) ?? DEFAULT_MAX_AGE;
 
 		const accessTokenCookie = this.configService.get<AuthConfigAccessTokenCookie>('auth.accessToken_cookie') ?? 'access_token';
@@ -415,7 +415,7 @@ export class UserService {
 		};
 
 		for (const key in cookies) {
-			res.cookie(key, cookies[key as keyof typeof cookies], { maxAge: ttl * 1000 });//because the TTL is in seconds, and maxAge is in miliseconds.
+			res.cookie(key, cookies[key as keyof typeof cookies], { maxAge: ttl * 1000, ...cookies_options });//because the TTL is in seconds, and maxAge is in miliseconds.
 		}
 
 		const body = { ...user, ...cookies };

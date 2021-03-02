@@ -454,7 +454,7 @@ export class UserService {
 	}
 
 
-	async forceLogin(user: any, field: string, res: Response, roles?: Role[]) {
+	async forceLogin(user: any, field: string, res: Response, roles?: Role[], cookies_options?: CookieOptions) {
 		if (!user[field]) {
 			debug("User tried to force login:", user);
 			return {}
@@ -466,7 +466,7 @@ export class UserService {
 		if (userInst) {
 			debug('Logged using forced login:', userInst)//WE DONT CARE HOW DID YOU LOGGED IN
 
-			return this.login({ ...userInst, roles: userInst.roles.map(role => role.name), roleKeys: userInst.roles.map(role => role.roleKey) }, res);
+			return this.login({ ...userInst, roles: userInst.roles.map(role => role.name), roleKeys: userInst.roles.map(role => role.roleKey) }, res, null, cookies_options);
 
 		}
 		else {
@@ -474,11 +474,11 @@ export class UserService {
 			let newUser = { ...user, username: user[field], password: null, [EMAIL_VERIFIED]: 1, roles: roles || [] }
 			newUser = await this.userRepository.save(newUser);
 			debug("New user instance: ", newUser);
-			return this.login({ ...newUser, roles: newUser.roles.map(role => role.name), type: this.userRepository.metadata.name }, res);
+			return this.login({ ...newUser, roles: newUser.roles.map(role => role.name), type: this.userRepository.metadata.name }, res, null, cookies_options);
 		}
 	}
 
-	async forceLoginUpdateFields(user, uniqeField, fields: Array<string>, res: Response, roles?: Role[]) {
+	async forceLoginUpdateFields(user, uniqeField, fields: Array<string>, res: Response, roles?: Role[], cookies_options?: CookieOptions) {
 		/**
 		 * @param user 
 		 * @param uniqeField - identified field 
@@ -505,13 +505,13 @@ export class UserService {
 				}
 			}
 			haveChange && this.userRepository.save(userInst);
-			return this.login({ ...userInst, roles: userInst.roles.map(role => role.name), roleKeys: userInst.roles.map(role => role.roleKey) }, res);
+			return this.login({ ...userInst, roles: userInst.roles.map(role => role.name), roleKeys: userInst.roles.map(role => role.roleKey) }, res, null, cookies_options);
 		}
 		else {
 			let newUser = { ...user, username: user[uniqeField], password: null, [EMAIL_VERIFIED]: 1, roles: roles || [] }
 			newUser = await this.userRepository.save(newUser);
 			debug("New user instance: ", newUser);
-			return this.login({ ...newUser, roles: roles.map(role => role.name), roleKeys: roles.map(role => role.roleKey), type: this.userRepository.metadata.name }, res);
+			return this.login({ ...newUser, roles: roles.map(role => role.name), roleKeys: roles.map(role => role.roleKey), type: this.userRepository.metadata.name }, res, null, cookies_options);
 		}
 	}
 

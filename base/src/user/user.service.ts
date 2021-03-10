@@ -57,7 +57,7 @@ export class UserService {
 
 		if (this.config_options.emailVerification) {
 			let userAndToken = await this.generateVerificationTokenAndSave(res);
-			this.sendVerificationEmail(userAndToken.username, userAndToken[VERIFICATION_TOKEN]);
+			this.sendVerificationEmail(userAndToken.username, userAndToken[VERIFICATION_TOKEN], user);
 			return userAndToken;
 		}
 
@@ -266,7 +266,7 @@ export class UserService {
 			catch(err => console.error(">Error in send mail: %s", err))
 	}
 
-	async sendVerificationEmail(email: string, token: string) {
+	async sendVerificationEmail(email: string, token: string, user?: DeepPartial<User>) {
 		const verification_email_config = this.configService.get<AuthConfigVerificationEmail>('auth.verification_email');
 		let sitename = this.configService.get<AuthConfigAppNameHe>('app_name_he') || "אתר תוצרת הילמה",
 			htmlConf = verification_email_config.html,

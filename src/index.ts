@@ -1,3 +1,11 @@
+declare global {
+	namespace Express {
+		interface Request {
+			user?: any;
+		}
+	}
+}
+
 export { TwoFactor } from './two-factor/two-factor.entity';
 export { TwoFactorModule } from './two-factor/two-factor.module';
 export { TwoFactorService } from './two-factor/two-factor.service';

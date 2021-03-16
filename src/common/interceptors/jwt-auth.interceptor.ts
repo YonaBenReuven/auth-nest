@@ -17,18 +17,18 @@ export class JwtAuthInterceptor implements NestInterceptor {
 
 	intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
 		const ctx = context.switchToHttp();
-		const req = ctx.getRequest<Request>();
+		const request = ctx.getRequest<Request>();
 
 		const token = extractTokenFromCookie(
 			this.configService.get<AuthConfigAccessTokenCookie>('auth.accessToken_cookie') ?? 'access_token',
 			this.configService.get<AuthConfigQueryAccessToken>('auth.allow_accessToken_query') ?? false
-		)(req);
+		)(request);
 
 		try {
 			const user = this.jwtService.verify(token, { secret: this.configService.get<AuthConfigSecretOrKey>('auth.secretOrKey') ?? jwtConstants.secret });
-			req.user = user;
+			request.user = user;
 		} catch (err) {
-			req.user = null;
+			request.user = null;
 		}
 
 		return next.handle();

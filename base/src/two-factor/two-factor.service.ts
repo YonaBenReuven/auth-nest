@@ -1,9 +1,9 @@
 import { Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { JwtService } from '@nestjs/jwt';
+import { JwtService, JwtSignOptions, JwtVerifyOptions } from '@nestjs/jwt';
 import { Repository } from 'typeorm';
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import * as https from 'https';
 import * as parser from 'xml2js';
 import * as bcrypt from 'bcrypt';
@@ -39,8 +39,8 @@ export class TwoFactorService {
 		private readonly configService: ConfigService,
 		private readonly jwtService: JwtService
 	) {
-		this.twoFactorSecretOrKey = this.configService.get<AuthConfigTwoFactorSecretOrKey>('auth.twoFactorSecretOrKey') ?? jwtConstants.twoFactorSecret;
-		this.twoFactorTokenCookie = this.configService.get<AuthConfigTwoFactorTokenCookie>('auth.twoFactorToken_cookie') ?? TWO_FACTOR_TOKEN;
+		this.twoFactorSecretOrKey = this.configService.get<AuthConfigTwoFactorSecretOrKey>('auth.twoFactorSecretOrKey', jwtConstants.twoFactorSecret);
+		this.twoFactorTokenCookie = this.configService.get<AuthConfigTwoFactorTokenCookie>('auth.twoFactorToken_cookie', TWO_FACTOR_TOKEN);
 		try {
 			if (!process.env.PASS019)
 				throw "SET ENV PASS019";
@@ -267,9 +267,8 @@ export class TwoFactorService {
 			roleKeys: user.roleKeys
 		}
 
-		const twoFactorToken = this.jwtService.sign(requestUser, {
-			expiresIn: this.twoFactorOptions.expires,
-			secret: this.twoFactorSecretOrKey
+		const twoFactorToken = this.createTwoFactorToken(requestUser, {
+			expiresIn: this.twoFactorOptions.expires
 		});
 
 		res.cookie(this.twoFactorTokenCookie, twoFactorToken, { maxAge: this.twoFactorOptions.expires * 1000 });
@@ -332,5 +331,19 @@ export class TwoFactorService {
 			})
 			.whereInIds([twoFactor.id])
 			.execute();
+	}
+
+	createTwoFactorToken<T extends RequestUserType = RequestUserType>(payload: T, options: JwtSignOptions = {}): string {
+		return this.jwtService.sign(payload, {
+			secret: this.twoFactorSecretOrKey,
+			...options,
+		});
+	}
+
+	verifyTwoFactorToken<T extends RequestUserType = RequestUserType>(token: string, options: JwtVerifyOptions = {}): Promise<T> {
+		return this.jwtService.verifyAsync<T>(token, {
+			secret: this.twoFactorSecretOrKey,
+			...options,
+		});
 	}
 }

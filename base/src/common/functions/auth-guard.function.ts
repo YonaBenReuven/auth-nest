@@ -1,30 +1,20 @@
 import { Reflector } from '@nestjs/core';
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
 
 import { UserService } from '../../user/user.service';
 import { User } from '../../user/user.entity';
 import { RequestUserType } from '../interfaces/request-user-type.interface';
 
-export const CreateAuthGuard = (type?: string | string[]) => class CreateAuthGuard extends AuthGuard(type) {
+export const AuthGuard = (type?: string | string[]) => class AuthGuard {
 
 	static type = type;
 
 	constructor(
 		public readonly userService: UserService,
 		public readonly reflector: Reflector
-	) {
-		super();
-	}
+	) { }
 
 	async canActivate(context: ExecutionContext) {
-		const isAuthenticated = await super.canActivate(context);
-
-		if (!isAuthenticated) {
-			if (type === 'local' || type === 'jwt' || type === 'knowledge' || type === 'possession') throw new UnauthorizedException();
-			else return false;
-		}
-
 		const roles = this.reflector.get<string[]>('roles', context.getHandler());
 		const entities = this.reflector.get<Array<typeof User>>('entities', context.getHandler());
 

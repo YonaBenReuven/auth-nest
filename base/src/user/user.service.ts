@@ -1,6 +1,6 @@
 import { Injectable, Inject, Optional, ConflictException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { JwtService } from '@nestjs/jwt';
+import { JwtService, JwtSignOptions, JwtVerifyOptions } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { CookieOptions, Response } from 'express';
 import { Repository, DeepPartial, SelectQueryBuilder } from 'typeorm';
@@ -27,6 +27,8 @@ const debug = require('debug')('model:User');
 
 @Injectable()
 export class UserService {
+	private authSecrestOrKey: string;
+
 	constructor(
 		@Inject('USER_MODULE_OPTIONS')
 		protected config_options: UserConfig,
@@ -42,9 +44,12 @@ export class UserService {
 		protected readonly userPasswordService?: UserPasswordService
 	) {
 		debug("init", this.userRepository.metadata.name);
+
+		this.authSecrestOrKey = this.configService.get<AuthConfigSecretOrKey>('auth.secretOrKey', jwtConstants.secret);
 	}
 
 	async createUser<U extends User = User>(user: DeepPartial<U>) {
+		const userCopy = { ...user };
 		if (!(user instanceof User)) { // The hash function does not apply for objects that r not User instances. 
 			(user as DeepPartial<User>).password = bcrypt.hashSync(user.password, SALT)
 		}
@@ -57,7 +62,7 @@ export class UserService {
 
 		if (this.config_options.emailVerification) {
 			let userAndToken = await this.generateVerificationTokenAndSave(res);
-			this.sendVerificationEmail(userAndToken.username, userAndToken[VERIFICATION_TOKEN], user);
+			this.sendVerificationEmail(userAndToken.username, userAndToken[VERIFICATION_TOKEN], userCopy);
 			return userAndToken;
 		}
 
@@ -402,10 +407,7 @@ export class UserService {
 			requestUser[field] = user[field];
 		});
 
-		const accessToken = this.jwtService.sign(requestUser, {
-			expiresIn: ttl,
-			secret: this.configService.get<AuthConfigSecretOrKey>('auth.secretOrKey') ?? jwtConstants.secret
-		});
+		const accessToken = this.createAccessToken(requestUser, { expiresIn: ttl });
 
 		const cookies = {
 			...klos,
@@ -536,6 +538,20 @@ export class UserService {
 		const fieldQueryBuilder = queryBuilder.addSelect(`user.${field}`);
 
 		return this.createValidateUserQueryBuilder(fieldQueryBuilder, rest);
+	}
+
+	createAccessToken<T extends RequestUserType = RequestUserType>(payload: T, options: JwtSignOptions = {}): string {
+		return this.jwtService.sign(payload, {
+			secret: this.authSecrestOrKey,
+			...options,
+		});
+	}
+
+	verifyAccessToken<T extends RequestUserType = RequestUserType>(token: string, options: JwtVerifyOptions = {}): Promise<T> {
+		return this.jwtService.verifyAsync<T>(token, {
+			secret: this.authSecrestOrKey,
+			...options,
+		});
 	}
 }
 

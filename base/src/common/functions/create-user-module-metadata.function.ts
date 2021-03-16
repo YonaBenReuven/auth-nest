@@ -7,9 +7,7 @@ import { RoleModule } from '../../role/role.module';
 import { User } from '../../user/user.entity';
 import { UserService } from '../../user/user.service';
 
-import { jwtConstants, USER_MODULE_OPTIONS } from '../constants';
-import { LocalStrategy } from '../strategies/local.strategy';
-import { JwtStrategy } from '../strategies/jwt.strategy';
+import { USER_MODULE_OPTIONS } from '../constants';
 import { AccessLoggerModule } from '../../access-logger';
 import { UserPasswordModule } from '../../user-password/user-password.module';
 
@@ -28,7 +26,7 @@ export const createUserModuleMetadata = (
 			provide: USER_MODULE_OPTIONS,
 			useValue: options,
 		},
-		UserService, LocalStrategy, JwtStrategy,
+		UserService,
 		...(options.providers || [])
 	],
 	exports: [UserService]

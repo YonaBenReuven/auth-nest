@@ -17,9 +17,10 @@ export const AuthGuard = (type?: string | string[]) => class AuthGuard {
 	async canActivate(context: ExecutionContext) {
 		const roles = this.reflector.get<string[]>('roles', context.getHandler());
 		const entities = this.reflector.get<Array<typeof User>>('entities', context.getHandler());
+		const userField = this.reflector.get<string>('userField', context.getHandler());
 
 		const request = context.switchToHttp().getRequest();
-		const user = request.user as RequestUserType;
+		const user = request[userField] as RequestUserType;
 
 		const rolesCanActivate = (roles && roles.length > 0) ? this.userService.matchRoles(user.roles, roles) : true;
 		const entitiesCanActivate = (entities && entities.length > 0) ? this.userService.matchEntities(user.type, entities) : true;

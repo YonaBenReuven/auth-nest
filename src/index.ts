@@ -1,7 +1,8 @@
 declare global {
 	namespace Express {
+		interface User { }
 		interface Request {
-			user?: any;
+			user?: User;
 		}
 	}
 }
@@ -17,6 +18,7 @@ export { JwtAuthInterceptor } from './common/interceptors/jwt-auth.interceptor';
 export { Entities } from './common/decorators/entities.decorator';
 export { RequestUser } from './common/decorators/request-user.decorator';
 export { Roles } from './common/decorators/roles.decorator';
+export { UserField } from './common/decorators/user-field.decorator';
 export { UseJwtAuth } from './common/decorators/use-jwt-auth.decorator';
 export { UseJwtInterceptor } from './common/decorators/use-jwt-interceptor.decorator';
 export { UseKnowledgeAuth } from './common/decorators/use-knowledge-auth.decorator';

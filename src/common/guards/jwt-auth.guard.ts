@@ -1,12 +1,12 @@
 import { Reflector } from '@nestjs/core';
 import { ExecutionContext, HttpException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 
-import { AuthGuard } from '../functions/auth-guard.function';
-import { extractTokenFromCookie } from '../functions/extract-token-from-cookie.function';
-import { UserService } from '../../user/user.service';
 import { AuthConfigAccessTokenCookie, AuthConfigQueryAccessToken } from '../interfaces/auth-config.interface';
-import { ConfigService } from '@nestjs/config';
+import { extractTokenFromCookie } from '../functions/extract-token-from-cookie.function';
+import { AuthGuard } from '../functions/auth-guard.function';
+import { UserService } from '../../user/user.service';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
@@ -31,13 +31,15 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 			const ctx = context.switchToHttp();
 			const request = ctx.getRequest<Request>();
 
+			const userField = this.reflector.get<string>('userField', context.getHandler()) || 'user';
+
 			const accessToken = this.jwtFromRequest(request);
 
 			const user = await this.userService.verifyAccessToken(accessToken, {
 				ignoreExpiration: false
 			});
 
-			request.user = user;
+			request[userField] = user;
 
 			return super.canActivate(context);
 		} catch (error) {

@@ -28,10 +28,9 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
 	async canActivate(context: ExecutionContext): Promise<boolean> {
 		try {
-			const ctx = context.switchToHttp();
-			const request = ctx.getRequest<Request>();
+			const request = context.switchToHttp().getRequest<Request>();
 
-			const userField = this.reflector.get<string>('userField', context.getHandler()) || 'user';
+			const userField = this.reflector.getAllAndOverride<string>('userField', [context.getHandler(), context.getClass()]);
 
 			const accessToken = this.jwtFromRequest(request);
 

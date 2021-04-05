@@ -7,6 +7,7 @@ declare global {
 	}
 }
 
+export { SetAuthMetadata } from './common/decorators/set-auth-metadata.decorator';
 export { TwoFactor } from './two-factor/two-factor.entity';
 export { TwoFactorModule } from './two-factor/two-factor.module';
 export { TwoFactorService } from './two-factor/two-factor.service';

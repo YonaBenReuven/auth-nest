@@ -41,8 +41,8 @@ export class PossessionAuthGuard extends AuthGuard('possession') {
 
 			const twoFactorToken = this.jwtFromRequest(request);
 
-			const payload = await this.twoFactorService.verifyTwoFactorToken(twoFactorToken, { 
-				ignoreExpiration: true 
+			const payload = await this.twoFactorService.verifyTwoFactorToken(twoFactorToken, {
+				ignoreExpiration: true
 			});
 			await this.twoFactorService.validateCode(payload.id, code);
 
@@ -51,7 +51,9 @@ export class PossessionAuthGuard extends AuthGuard('possession') {
 
 			await this.twoFactorService.validateUser(user.id);
 
-			request.user = user;
+			const userField = this.reflector.getAllAndOverride<string>('userField', [context.getHandler(), context.getClass()]);
+
+			request[userField] = user;
 
 			return super.canActivate(context);
 

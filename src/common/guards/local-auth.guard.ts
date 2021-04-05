@@ -29,7 +29,9 @@ export class LocalAuthGuard extends AuthGuard('local') {
 			const user = await this.userService.validateUser(username, password);
 			if (!user) throw new UnauthorizedException();
 
-			request.user = user;
+			const userField = this.reflector.getAllAndOverride<string>('userField', [context.getHandler(), context.getClass()]);
+
+			request[userField] = user;
 
 			return super.canActivate(context);
 

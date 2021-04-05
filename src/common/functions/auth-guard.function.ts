@@ -1,9 +1,10 @@
 import { Reflector } from '@nestjs/core';
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { Request } from 'express';
 
+import { RequestUserType } from '../interfaces/request-user-type.interface';
 import { UserService } from '../../user/user.service';
 import { User } from '../../user/user.entity';
-import { RequestUserType } from '../interfaces/request-user-type.interface';
 
 export const AuthGuard = (type?: string | string[]) => class AuthGuard {
 
@@ -15,11 +16,11 @@ export const AuthGuard = (type?: string | string[]) => class AuthGuard {
 	) { }
 
 	async canActivate(context: ExecutionContext) {
-		const roles = this.reflector.get<string[]>('roles', context.getHandler());
-		const entities = this.reflector.get<Array<typeof User>>('entities', context.getHandler());
-		const userField = this.reflector.get<string>('userField', context.getHandler());
+		const roles = this.reflector.getAllAndOverride<string[]>('roles', [context.getHandler(), context.getClass()]);
+		const entities = this.reflector.getAllAndOverride<Array<typeof User>>('entities', [context.getHandler(), context.getClass()]);
+		const userField = this.reflector.getAllAndOverride<string>('userField', [context.getHandler(), context.getClass()]);
 
-		const request = context.switchToHttp().getRequest();
+		const request = context.switchToHttp().getRequest<Request>();
 		const user = request[userField] as RequestUserType;
 
 		const rolesCanActivate = (roles && roles.length > 0) ? this.userService.matchRoles(user.roles, roles) : true;

@@ -40,6 +40,10 @@ export const SetAuthMetadata: UseAuthGuard = <T extends typeof User>(
 		...decorators
 	);
 
+	if ((config as { userField: string }).userField) return applyDecorators(
+		...defaultDecorators
+	);
+
 	if (config) return applyDecorators(
 		...defaultDecorators,
 		Entities(config as T, ...rest as T[]),
